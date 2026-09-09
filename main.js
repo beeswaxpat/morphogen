@@ -429,28 +429,31 @@
   const empty = (el, text) => { const p = document.createElement('p'); p.className = 'dim'; p.textContent = text; el.appendChild(p); };
   function renderMarks() {
     marksEl.textContent = ''; questionsEl.textContent = '';
-    const t = tops(), qs = t.filter(m => m.kind === 'question'), ms = t.filter(m => m.kind !== 'question');
-    const thread = (el, m) => { el.appendChild(markRow(m)); for (const r of marks.filter(x => x.re === m.id).reverse()) el.appendChild(markRow(r, true)); };
-    if (!qs.length) empty(questionsEl, 'None open.'); else for (const m of qs.slice(0, 12)) thread(questionsEl, m);
+    const t = tops(), replies = m => marks.filter(x => x.re === m.id);
+    const qs = t.filter(m => m.kind === 'question'), ms = t.filter(m => m.kind !== 'question');
+    const open = qs.filter(m => !replies(m).length), done = qs.filter(m => replies(m).length);
+    if (!qs.length) empty(questionsEl, 'None open.');
+    for (const m of open) questionsEl.appendChild(markRow(m, false, m.place || ''));
+    for (const m of done) { const n = replies(m).length; questionsEl.appendChild(markRow(m, false, `${n} answer${n > 1 ? 's' : ''}${m.place ? ' · ' + m.place : ''}`, 'answered')); }
     if (!ms.length) return empty(marksEl, (db || PUB) ? 'No marks yet. Yours would be the first.' : 'Marks live in the shared copy of this page. This copy keeps them only for you.');
-    for (const m of ms.slice(0, 40)) thread(marksEl, m);
+    for (const m of ms.slice(0, 40)) { marksEl.appendChild(markRow(m)); for (const r of replies(m).reverse()) marksEl.appendChild(markRow(r, true)); }
   }
-  function markRow(m, reply) {
-    const row = document.createElement('button'); row.type = 'button'; row.className = 'mark' + (reply ? ' reply' : '');
+  function markRow(m, reply, meta, cls) {
+    const row = document.createElement('button'); row.type = 'button'; row.className = 'mark' + (reply ? ' reply' : '') + (cls ? ' ' + cls : '');
     const qq = document.createElement('q'); qq.textContent = m.note;
-    const meta = document.createElement('small'); meta.textContent = `${m.by}${day(m.at)}${m.place ? ' · ' + m.place : ''}${m.stamp ? ' · leaves a glyph' : ''}`;
-    row.append(qq, meta);
+    const sm = document.createElement('small'); sm.textContent = meta != null ? meta : `${m.by}${day(m.at)}${m.place ? ' · ' + m.place : ''}${m.stamp ? ' · glyph' : ''}`;
+    row.append(qq, sm);
     row.addEventListener('click', () => { startVisit(m); closePanel(); });
     return row;
   }
   function renderRoutes() {
     routesEl.textContent = '';
-    if (!routes.length) return empty(routesEl, 'No routes yet. A route is a walk someone composed for the walker: a few points in F, k and how long to stay at each.');
+    if (!routes.length) return empty(routesEl, 'No routes yet. A route is a walk composed for the walker.');
     for (const r of routes.slice(0, 20)) {
       const row = document.createElement('button'); row.type = 'button'; row.className = 'mark';
       const qq = document.createElement('q'); qq.textContent = r.name;
       const mins = Math.round(r.points.reduce((a, p) => a + p.s, 0)/60);
-      const meta = document.createElement('small'); meta.textContent = `${r.by}${day(r.at)} · ${r.points.length} points · about ${mins} min${r.note ? ' · ' + r.note : ''}`;
+      const meta = document.createElement('small'); meta.textContent = `${r.by} · ${r.points.length} points · ${mins} min`;
       row.append(qq, meta);
       row.addEventListener('click', () => { startRoute(r); closePanel(); });
       routesEl.appendChild(row);
