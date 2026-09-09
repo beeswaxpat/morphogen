@@ -53,15 +53,16 @@
 
   // ---- grades: a few color moods, never a rainbow; they crossfade slowly and change on events ----
   const GRADES = {
-    sage:        { ground: [0.043, 0.039, 0.031], rim: [0.10, 0.16, 0.17], core: [0.40, 0.50, 0.44], young: [0.78, 0.60, 0.31], ember: [0.98, 0.72, 0.36], neon: [0.55, 0.95, 0.80], neonAmt: 0.35 },
-    gold:        { ground: [0.045, 0.038, 0.028], rim: [0.16, 0.17, 0.11], core: [0.52, 0.50, 0.34], young: [0.85, 0.66, 0.32], ember: [1.00, 0.72, 0.30], neon: [1.00, 0.62, 0.28], neonAmt: 0.5 },
-    deepsea:     { ground: [0.020, 0.030, 0.050], rim: [0.05, 0.20, 0.26], core: [0.22, 0.55, 0.55], young: [0.70, 0.95, 0.90], ember: [0.60, 0.95, 1.00], neon: [0.25, 0.95, 0.90], neonAmt: 1.0 },
-    ultraviolet: { ground: [0.035, 0.020, 0.050], rim: [0.22, 0.08, 0.34], core: [0.55, 0.40, 0.70], young: [0.95, 0.80, 0.95], ember: [1.00, 0.55, 0.85], neon: [0.85, 0.35, 1.00], neonAmt: 1.0 },
-    ember:       { ground: [0.050, 0.025, 0.020], rim: [0.30, 0.10, 0.05], core: [0.75, 0.40, 0.18], young: [1.00, 0.85, 0.55], ember: [1.00, 0.60, 0.25], neon: [1.00, 0.40, 0.15], neonAmt: 0.8 },
-    ice:         { ground: [0.030, 0.035, 0.050], rim: [0.18, 0.24, 0.34], core: [0.62, 0.72, 0.82], young: [0.95, 0.98, 1.00], ember: [0.75, 0.90, 1.00], neon: [0.55, 0.80, 1.00], neonAmt: 0.7 },
-    moss:        { ground: [0.025, 0.035, 0.020], rim: [0.10, 0.20, 0.06], core: [0.38, 0.55, 0.22], young: [0.80, 0.95, 0.45], ember: [0.85, 1.00, 0.50], neon: [0.55, 1.00, 0.35], neonAmt: 0.6 },
+    sage:        { ground: [0.043, 0.039, 0.031], rim: [0.10, 0.16, 0.17], core: [0.40, 0.50, 0.44], core2: [0.56, 0.47, 0.28], young: [0.80, 0.62, 0.30], ember: [0.98, 0.72, 0.36], neon: [0.55, 0.95, 0.80], neonAmt: 0.35 },
+    gold:        { ground: [0.045, 0.038, 0.028], rim: [0.16, 0.17, 0.11], core: [0.52, 0.50, 0.34], core2: [0.58, 0.34, 0.32], young: [0.90, 0.80, 0.40], ember: [1.00, 0.72, 0.30], neon: [1.00, 0.62, 0.28], neonAmt: 0.5 },
+    deepsea:     { ground: [0.020, 0.030, 0.050], rim: [0.05, 0.20, 0.26], core: [0.22, 0.55, 0.55], core2: [0.24, 0.34, 0.72], young: [0.70, 0.95, 0.90], ember: [1.00, 0.45, 0.75], neon: [0.25, 0.95, 0.90], neonAmt: 1.0 },
+    ultraviolet: { ground: [0.035, 0.020, 0.050], rim: [0.22, 0.08, 0.34], core: [0.55, 0.40, 0.70], core2: [0.82, 0.32, 0.58], young: [0.75, 0.95, 0.55], ember: [0.60, 1.00, 0.70], neon: [0.85, 0.35, 1.00], neonAmt: 1.0 },
+    ember:       { ground: [0.050, 0.025, 0.020], rim: [0.30, 0.10, 0.05], core: [0.75, 0.40, 0.18], core2: [0.62, 0.14, 0.22], young: [1.00, 0.85, 0.55], ember: [0.40, 0.90, 1.00], neon: [1.00, 0.40, 0.15], neonAmt: 0.8 },
+    ice:         { ground: [0.030, 0.035, 0.050], rim: [0.18, 0.24, 0.34], core: [0.62, 0.72, 0.82], core2: [0.58, 0.52, 0.80], young: [0.95, 0.98, 1.00], ember: [1.00, 0.55, 0.45], neon: [0.55, 0.80, 1.00], neonAmt: 0.7 },
+    moss:        { ground: [0.025, 0.035, 0.020], rim: [0.10, 0.20, 0.06], core: [0.38, 0.55, 0.22], core2: [0.18, 0.50, 0.46], young: [0.80, 0.95, 0.45], ember: [0.72, 0.50, 1.00], neon: [0.55, 1.00, 0.35], neonAmt: 0.6 },
   };
-  const GKEYS = ['ground', 'rim', 'core', 'young', 'ember', 'neon'];
+
+  const GKEYS = ['ground', 'rim', 'core', 'core2', 'young', 'ember', 'neon'];
   let gradeA = 'sage', gradeB = 'sage', gmix = 1, gradeUntil = 0;
   const pal = {};
   function blendGrade() {
@@ -94,7 +95,7 @@
       api.goto(pick, 30); showCaption('moving on. ' + pick + '.', 9000, 'now');
     } else if (act === 'zoom') { dir.zt = 0.9; dir.zoomUntil = frame + 45*60; showCaption('closer.', 6000, 'now'); }
     else if (act === 'tilt') { dir.at = 0.55; dir.tiltUntil = frame + 35*60; showCaption('the grain turns.', 8000, 'now'); }
-    else if (act === 'breath') { dir.kTo = 0.0025; dir.offUntil = frame + 10*60; showCaption('k rises. the maze thins.', 9000, 'now'); }
+    else if (act === 'breath') { dir.kTo = 0.0018; dir.offUntil = frame + 8*60; showCaption('k rises. the maze thins.', 9000, 'now'); }
     else if (act === 'flood') { dir.fTo = 0.012; dir.offUntil = frame + 6*60; showCaption('f rises. everything fills.', 9000, 'now'); }
     else if (act === 'poke') { poke(); showCaption('holes punched.', 7000, 'now'); note('poke', { by: 'director' }); }
     note('direct', { act });
@@ -688,7 +689,7 @@
     for (let i = 0; i < steps; i++) { uni.u_state = state[0].tex; E.draw(ctx, P.sim, state[1], uni); state.reverse(); }
     E.draw(ctx, P.trail, trail[1], { u_state: state[0].tex, u_trail: trail[0].tex }); trail.reverse();
     const la = T/500;
-    E.draw(ctx, P.render, null, { u_trail: trail[0].tex, u_px: px(), u_light: [Math.cos(la)*0.8, Math.sin(la)*0.8], u_time: T, u_fade: Math.min(1, T/4)*expo, u_flat: flat, u_glow: glow, u_pulse: pulse, u_cam: [cam.x, cam.y, cam.z], u_ground: pal.ground, u_rim: pal.rim, u_core: pal.core, u_young: pal.young, u_ember: pal.ember, u_neon: pal.neon, u_neonAmt: pal.neonAmt });
+    E.draw(ctx, P.render, null, { u_trail: trail[0].tex, u_px: px(), u_light: [Math.cos(la)*0.8, Math.sin(la)*0.8], u_time: T, u_fade: Math.min(1, T/4)*expo, u_flat: flat, u_glow: glow, u_pulse: pulse, u_cam: [cam.x, cam.y, cam.z], u_ground: pal.ground, u_rim: pal.rim, u_core: pal.core, u_core2: pal.core2, u_young: pal.young, u_ember: pal.ember, u_neon: pal.neon, u_neonAmt: pal.neonAmt });
     if (frame % 45 === 0) probe();
     if (frame % 12 === 0) { path.push([W.F, W.k]); if (path.length > 400) path.shift(); }
     if (frame % 6 === 0) drawHUD();

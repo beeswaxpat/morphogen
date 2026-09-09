@@ -130,7 +130,7 @@ void main(){ vec2 s = readS(v); gl_FragColor = vec4(0.0, 0.0, min(1.0, s.y*2.0),
 SH.RENDER = `
 uniform sampler2D u_trail; uniform vec2 u_px; uniform vec2 u_light;
 uniform float u_time, u_fade, u_flat, u_glow, u_pulse, u_neonAmt; uniform vec3 u_cam;
-uniform vec3 u_ground, u_rim, u_core, u_young, u_ember, u_neon; varying vec2 v;
+uniform vec3 u_ground, u_rim, u_core, u_core2, u_young, u_ember, u_neon; varying vec2 v;
 void main(){
   // a slow camera: u_cam.xy pans, u_cam.z zooms; the field is periodic so the pan never ends
   vec2 uv = fract(u_cam.xy + (v - 0.5)/u_cam.z);
@@ -144,7 +144,10 @@ void main(){
   float diff = clamp(dot(nrm, L), 0.0, 1.0);
   float spec = pow(clamp(dot(nrm, normalize(L + vec3(0.0, 0.0, 1.0))), 0.0, 1.0), 28.0);
   float m = smoothstep(0.03, 0.30, b);
-  vec3 tissue = mix(u_rim, u_core, smoothstep(0.12, 0.30, b));
+  // two hues share the tissue, in slow patches that drift across the field
+  float w = 0.5 + 0.5*sin(6.2832*(uv.x*1.1 + 0.25*sin(u_time/95.0)) + u_time/70.0)*sin(6.2832*(uv.y*0.8 - u_time/80.0) + 1.7);
+  vec3 core = mix(u_core, u_core2, smoothstep(0.2, 0.8, w));
+  vec3 tissue = mix(u_rim, core, smoothstep(0.12, 0.30, b));
   tissue = mix(u_young, tissue, smoothstep(0.0, 0.9, age));
   tissue *= 0.70 + 0.48*diff;
   tissue += spec*0.12;
