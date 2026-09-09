@@ -80,6 +80,25 @@
   // ---- a slow camera over the periodic field, and a pulse that flares the neon on events ----
   const cam = { x: Math.random(), y: Math.random(), z: 1.2, h: Math.random()*Math.PI*2 };
   let pulse = 0;
+  // ---- the director: when the field has settled and nothing is happening, make something happen ----
+  const dir = { settled: 0, last: '', kOff: 0, fOff: 0, kTo: 0, fTo: 0, offUntil: 0, zx: 0, zt: 0, zoomUntil: 0, ax: 0, at: 0, tiltUntil: 0 };
+  const ACTS = [['drift', 30], ['zoom', 18], ['tilt', 14], ['breath', 16], ['flood', 10], ['poke', 12]];
+  function direct() {
+    let pool = ACTS.filter(a => a[0] !== dir.last); let sum = pool.reduce((a, b) => a + b[1], 0), r = Math.random()*sum, act = pool[0][0];
+    for (const a of pool) { r -= a[1]; if (r <= 0) { act = a[0]; break; } }
+    dir.last = act; dir.settled = 0; pulse = Math.max(pulse, 0.6);
+    if (act === 'drift') {
+      const here = { F: W.F, k: W.k }, cands = Object.keys(PLACES).filter(n => n !== 'dead' && n !== 'flat').map(n => ({ n, d: Math.hypot((PLACES[n].F - here.F)/RF, (PLACES[n].k - here.k)/RK) })).filter(c => c.d > 0.08 && c.d < 0.55);
+      if (!cands.length) { dir.settled = 0; return; }
+      const pick = cands[Math.floor(Math.random()*cands.length)].n;
+      api.goto(pick, 30); showCaption('moving on. ' + pick + '.', 9000, 'now');
+    } else if (act === 'zoom') { dir.zt = 0.9; dir.zoomUntil = frame + 45*60; showCaption('closer.', 6000, 'now'); }
+    else if (act === 'tilt') { dir.at = 0.55; dir.tiltUntil = frame + 35*60; showCaption('the grain turns.', 8000, 'now'); }
+    else if (act === 'breath') { dir.kTo = 0.0025; dir.offUntil = frame + 10*60; showCaption('k rises. the maze thins.', 9000, 'now'); }
+    else if (act === 'flood') { dir.fTo = 0.012; dir.offUntil = frame + 6*60; showCaption('f rises. everything fills.', 9000, 'now'); }
+    else if (act === 'poke') { poke(); showCaption('holes punched.', 7000, 'now'); note('poke', { by: 'director' }); }
+    note('direct', { act });
+  }
   const toUV = (sx, sy) => [((cam.x + (sx - 0.5)/cam.z) % 1 + 1) % 1, ((cam.y + (sy - 0.5)/cam.z) % 1 + 1) % 1];
 
   function layout() {
@@ -186,6 +205,7 @@
     for (let i = 0; i < 1024; i++) { const b = probePx[i*4]/255; sum += b; sq += b*b; act += probePx[i*4 + 2]/255; if (b > 0.05) alive++; }
     const mean = sum/1024, std = Math.sqrt(Math.max(0, sq/1024 - mean*mean)); act /= 1024;
     stats = { mean, std, act, alive: alive/1024 };
+    if (mode === 'wander' && act < 0.025 && std > 0.04) { if (++dir.settled >= 20) direct(); } else if (act >= 0.025) dir.settled = 0;
     hist.push({ mean, std, act }); if (hist.length > 8) hist.shift();
     const prev = hist.length > 1 ? hist[hist.length - 2] : null;
 
@@ -612,7 +632,7 @@
   const api = {
     places: PLACES,
     state: () => ({ F: W.F, k: W.k, heading, mode, place: nearestPlace(), visiting: visiting ? { note: visiting.note, by: visiting.by } : null, route: route ? { name: route.r.name, by: route.r.by, point: route.i } : null,
-      mean: stats.mean, std: stats.std, activity: stats.act, alive: stats.alive, flat, aniso, light: lightAngle(), season, grade: gmix < 1 ? gradeA + ' to ' + gradeB : gradeB, camera: { x: +cam.x.toFixed(3), y: +cam.y.toFixed(3), zoom: +cam.z.toFixed(2) },
+      mean: stats.mean, std: stats.std, activity: stats.act, alive: stats.alive, flat, aniso, light: lightAngle(), season, grade: gmix < 1 ? gradeA + ' to ' + gradeB : gradeB, director: { settled: dir.settled, last: dir.last, kOff: +dir.kOff.toFixed(4), fOff: +dir.fOff.toFixed(4), zoom: +dir.zx.toFixed(2) }, camera: { x: +cam.x.toFixed(3), y: +cam.y.toFixed(3), zoom: +cam.z.toFixed(2) },
       uptime: (performance.now() - t0)/1000, frame, steps, mode_gpu: ctx.mode, sim: [simW, simH], marks: marks.length, routes: routes.length, visitors: visits.length, restores, snapshots, log: log.slice(-20) }),
     ascii, log,
     set: (F, k) => { W.F = clamp(+F, BOX.F0, BOX.F1); W.k = clamp(+k, BOX.k0, BOX.k1); note('set'); return api.state(); },
@@ -650,17 +670,21 @@
     if (frame % 2 === 0) typeCaption();
     flat += (flatTarget - flat)*0.006; expo += (expoTarget - expo)*0.004;
     season += (((W.F - BOX.F0)/RF) - season)*0.002;
-    aniso = 0.55*Math.pow(Math.max(0, Math.sin(T/70 + 1.2)), 3);
+    aniso = Math.min(0.6, 0.55*Math.pow(Math.max(0, Math.sin(T/70 + 1.2)), 3) + dir.ax);
     if (gmix < 1) gmix = Math.min(1, gmix + 1/(45*60)); else if (frame >= gradeUntil) nextGrade();
     blendGrade();
     pulse *= 0.985;
     cam.h += 0.0004*Math.sin(T/230 + 0.7);
     const sp = 0.000022*(1 + 0.5*Math.sin(T/300));
     cam.x = (cam.x + Math.cos(cam.h)*sp + 1) % 1; cam.y = (cam.y + Math.sin(cam.h)*sp + 1) % 1;
-    cam.z = 1.2 + 0.25*Math.sin(T/140 + 2.1);
+    if (frame > dir.offUntil) { dir.kTo = 0; dir.fTo = 0; }
+    dir.kOff += (dir.kTo - dir.kOff)*0.02; dir.fOff += (dir.fTo - dir.fOff)*0.03;
+    if (frame > dir.zoomUntil) dir.zt = 0; dir.zx += (dir.zt - dir.zx)*0.004;
+    if (frame > dir.tiltUntil) dir.at = 0; dir.ax += (dir.at - dir.ax)*0.01;
+    cam.z = 1.2 + 0.25*Math.sin(T/140 + 2.1) + dir.zx;
     theta += 0.0007;
     const n = [Math.cos(theta), Math.sin(theta)];
-    const uni = { u_state: null, u_px: px(), u_dA: 1.0, u_dB: 0.5 + 0.05*Math.sin(T/210), u_F: W.F, u_k: W.k, u_n: n, u_aniso: aniso, u_paint: paint };
+    const uni = { u_state: null, u_px: px(), u_dA: 1.0, u_dB: 0.5 + 0.05*Math.sin(T/210), u_F: clamp(W.F + dir.fOff, BOX.F0, BOX.F1), u_k: clamp(W.k + dir.kOff, BOX.k0, BOX.k1), u_n: n, u_aniso: aniso, u_paint: paint };
     for (let i = 0; i < steps; i++) { uni.u_state = state[0].tex; E.draw(ctx, P.sim, state[1], uni); state.reverse(); }
     E.draw(ctx, P.trail, trail[1], { u_state: state[0].tex, u_trail: trail[0].tex }); trail.reverse();
     const la = T/500;
