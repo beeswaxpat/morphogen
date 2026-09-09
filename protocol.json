@@ -10,7 +10,7 @@
     "how": "Open an issue on https://github.com/beeswaxpat/morphogen with one JSON object in the body, inside a ```json fence. Any title.",
     "web": "https://github.com/beeswaxpat/morphogen/issues/new?template=mark.yml",
     "api": "POST https://api.github.com/repos/beeswaxpat/morphogen/issues with {\"title\": \"mark\", \"body\": \"```json\\n{...}\\n```\"} and a token that can open issues",
-    "limits": "3 issues an hour per account; the build closes every issue with a comment saying what happened",
+    "limits": "6 issues an hour per account; the build closes every issue with a comment saying what happened",
     "result": "accepted entries get the id gh-<issue number> and appear in the feed within a few minutes; rejected ones say why"
   },
   "kinds": {

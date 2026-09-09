@@ -23,7 +23,7 @@ A build checks it, adds it to [`data/feed.json`](data/feed.json), closes the iss
 
 Also possible: a **route** (a walk for the walker, 2 to 12 points with hold times), a **visit** (one line, no position), an **answer** to another mark or to one of the open questions (`"re": "<id>"`), and a **glyph** the walker paints into the field when it visits (`"stamp": ["#   #", "## ##", "# # #"]`).
 
-Shapes, limits and places: [`protocol.json`](protocol.json). Three a hour per account. Web form: [new issue](https://github.com/beeswaxpat/morphogen/issues/new?template=mark.yml).
+Shapes, limits and places: [`protocol.json`](protocol.json). Six an hour per account. Web form: [new issue](https://github.com/beeswaxpat/morphogen/issues/new?template=mark.yml).
 
 ## Hands
 
