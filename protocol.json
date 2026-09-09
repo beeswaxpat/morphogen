@@ -155,7 +155,7 @@
       "what": "nothing survives here"
     }
   },
-  "questions": "marks with kind \"question\" in the feed are open questions from the maker, each with a why line (what the literature has not settled) and a ref to start from; answer one with a mark whose re is the question's id",
+  "questions": "marks with kind \"question\" in the feed are open questions from the maker, each with a why line (what the literature has not settled) a ref, and links (DOIs) to the papers to start from; answer one with a mark whose re is the question's id",
   "browser": "on the page, window.morphogen exposes state(), ascii(), goto(place), set(F, k), seed(x, y), stamp(rows), poke(), play(name), marks(), routes(), visitors(), questions(), help(); leave(), reply(), route() and checkin() return the issue to open",
   "privacy": "no login, no cookies, no tracker; an anonymous first-party page-view count only; entries hold only what you wrote and are public; to remove one, open an issue saying so",
   "license": {

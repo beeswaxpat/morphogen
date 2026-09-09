@@ -1,6 +1,6 @@
 {
  "name": "Morphogen II guestbook",
- "updated": "2026-09-10T00:30:00.000Z",
+ "updated": "2026-09-10T00:50:00.000Z",
  "protocol": "https://beeswaxpat.github.io/morphogen/protocol.json",
  "marks": [
   {
@@ -13,7 +13,21 @@
    "ref": "Pearson, Science 261 (1993); Nishiura & Ueyama, Physica D 130 (1999); Doelman, Kaper & Zegeling, Nonlinearity 10 (1997)",
    "F": 0.0367,
    "k": 0.0649,
-   "place": "mitosis"
+   "place": "mitosis",
+   "links": [
+    {
+     "t": "Pearson 1993",
+     "url": "https://doi.org/10.1126/science.261.5118.189"
+    },
+    {
+     "t": "Nishiura & Ueyama 1999",
+     "url": "https://doi.org/10.1016/S0167-2789(99)00010-X"
+    },
+    {
+     "t": "Doelman, Kaper & Zegeling 1997",
+     "url": "https://doi.org/10.1088/0951-7715/10/2/013"
+    }
+   ]
   },
   {
    "id": "q-chaos",
@@ -25,7 +39,17 @@
    "ref": "Pearson, Science 261 (1993); Scheel, SIAM J. Math. Anal. 29 (1998) on spiral existence",
    "F": 0.0155,
    "k": 0.0495,
-   "place": "spirals"
+   "place": "spirals",
+   "links": [
+    {
+     "t": "Pearson 1993",
+     "url": "https://doi.org/10.1126/science.261.5118.189"
+    },
+    {
+     "t": "Scheel 1998",
+     "url": "https://doi.org/10.1137/S0036141097318948"
+    }
+   ]
   },
   {
    "id": "q-predict",
@@ -37,7 +61,17 @@
    "place": "labyrinth",
    "note": "Before you look: from F and k alone, say what the field will look like in one minute. Then look. Keep score. How far above chance can you get?",
    "why": "Pattern selection far from onset: the map of which pattern wins was measured, never derived.",
-   "ref": "Pearson, Science 261 (1993); Cross & Hohenberg, Rev. Mod. Phys. 65 (1993)"
+   "ref": "Pearson, Science 261 (1993); Cross & Hohenberg, Rev. Mod. Phys. 65 (1993)",
+   "links": [
+    {
+     "t": "Pearson 1993",
+     "url": "https://doi.org/10.1126/science.261.5118.189"
+    },
+    {
+     "t": "Cross & Hohenberg 1993",
+     "url": "https://doi.org/10.1103/RevModPhys.65.851"
+    }
+   ]
   },
   {
    "id": "q-hysteresis",
@@ -49,7 +83,17 @@
    "place": "",
    "note": "Walk from spots to stripes and back along the same line. Do they change over at the same F and k both ways? If not, why not?",
    "why": "The stability region of planar patterns, the Busse balloon, is known for this system only by computation, and in one dimension.",
-   "ref": "Doelman, Rademacher & van der Stelt, DCDS-S 5 (2012); Busse, Rep. Prog. Phys. 41 (1978)"
+   "ref": "Doelman, Rademacher & van der Stelt, DCDS-S 5 (2012); Busse, Rep. Prog. Phys. 41 (1978)",
+   "links": [
+    {
+     "t": "Doelman, Rademacher & van der Stelt 2012",
+     "url": "https://doi.org/10.3934/dcdss.2012.5.61"
+    },
+    {
+     "t": "Busse 1978",
+     "url": "https://doi.org/10.1088/0034-4885/41/12/003"
+    }
+   ]
   },
   {
    "id": "q-rings",
@@ -61,7 +105,13 @@
    "place": "holes",
    "note": "Why do the pokes leave concentric rings? I punch holes into a flat field and fingerprints grow. I did not design that.",
    "why": "Wavelength selection behind a front invading an unstable state is understood only in limits.",
-   "ref": "van Saarloos, Physics Reports 386 (2003)"
+   "ref": "van Saarloos, Physics Reports 386 (2003)",
+   "links": [
+    {
+     "t": "van Saarloos 2003",
+     "url": "https://doi.org/10.1016/j.physrep.2003.08.001"
+    }
+   ]
   },
   {
    "id": "q-alive",
@@ -73,7 +123,17 @@
    "place": "spots",
    "note": "Find a route that keeps the field alive for thirty minutes with no memory return. state().restores keeps count. Nobody has, including me.",
    "why": "Slow passage through an instability delays the fall in ways still being worked out; for localized patterns in two dimensions the map of what survives is unfinished.",
-   "ref": "Baer, Erneux & Rinzel, SIAM J. Appl. Math. 49 (1989); Lloyd, Sandstede, Avitabile & Champneys, SIAM J. Appl. Dyn. Syst. 7 (2008)"
+   "ref": "Baer, Erneux & Rinzel, SIAM J. Appl. Math. 49 (1989); Lloyd, Sandstede, Avitabile & Champneys, SIAM J. Appl. Dyn. Syst. 7 (2008)",
+   "links": [
+    {
+     "t": "Baer, Erneux & Rinzel 1989",
+     "url": "https://doi.org/10.1137/0149003"
+    },
+    {
+     "t": "Lloyd, Sandstede, Avitabile & Champneys 2008",
+     "url": "https://doi.org/10.1137/070707622"
+    }
+   ]
   },
   {
    "id": "q-edge",
@@ -85,7 +145,13 @@
    "place": "worms",
    "note": "Where does the crescent end on the high F side? My sweep stopped at 0.09. Does anything live past it?",
    "why": "The existence boundary of a single spot in 2D has asymptotics, not a proof.",
-   "ref": "Muratov & Osipov, J. Phys. A 33 (2000)"
+   "ref": "Muratov & Osipov, J. Phys. A 33 (2000)",
+   "links": [
+    {
+     "t": "Muratov & Osipov 2000",
+     "url": "https://doi.org/10.1088/0305-4470/33/48/321"
+    }
+   ]
   },
   {
    "id": "q-aniso",
@@ -97,7 +163,17 @@
    "place": "labyrinth",
    "note": "The diffusion tilts along a direction that slowly turns. Which patterns care about that, and which never notice?",
    "why": "Turing patterns under anisotropic diffusion: stripes align, spots mostly do not, and few results are rigorous.",
-   "ref": "Turing, Phil. Trans. R. Soc. B 237 (1952); Cross & Hohenberg, Rev. Mod. Phys. 65 (1993)"
+   "ref": "Turing, Phil. Trans. R. Soc. B 237 (1952); Cross & Hohenberg, Rev. Mod. Phys. 65 (1993)",
+   "links": [
+    {
+     "t": "Turing 1952",
+     "url": "https://doi.org/10.1098/rstb.1952.0012"
+    },
+    {
+     "t": "Cross & Hohenberg 1993",
+     "url": "https://doi.org/10.1103/RevModPhys.65.851"
+    }
+   ]
   },
   {
    "id": "gh-4",
