@@ -51,6 +51,37 @@
   const day = s => s ? ' · ' + String(s).slice(0, 10) : '';
   let glow = (() => { try { const g = parseFloat(localStorage.getItem('morphogen.glow')); return isNaN(g) ? 1 : clamp(g, 0, 2); } catch (e) { return 1; } })();
 
+  // ---- grades: a few color moods, never a rainbow; they crossfade slowly and change on events ----
+  const GRADES = {
+    sage:        { ground: [0.043, 0.039, 0.031], rim: [0.10, 0.16, 0.17], core: [0.40, 0.50, 0.44], young: [0.78, 0.60, 0.31], ember: [0.98, 0.72, 0.36], neon: [0.55, 0.95, 0.80], neonAmt: 0.35 },
+    gold:        { ground: [0.045, 0.038, 0.028], rim: [0.16, 0.17, 0.11], core: [0.52, 0.50, 0.34], young: [0.85, 0.66, 0.32], ember: [1.00, 0.72, 0.30], neon: [1.00, 0.62, 0.28], neonAmt: 0.5 },
+    deepsea:     { ground: [0.020, 0.030, 0.050], rim: [0.05, 0.20, 0.26], core: [0.22, 0.55, 0.55], young: [0.70, 0.95, 0.90], ember: [0.60, 0.95, 1.00], neon: [0.25, 0.95, 0.90], neonAmt: 1.0 },
+    ultraviolet: { ground: [0.035, 0.020, 0.050], rim: [0.22, 0.08, 0.34], core: [0.55, 0.40, 0.70], young: [0.95, 0.80, 0.95], ember: [1.00, 0.55, 0.85], neon: [0.85, 0.35, 1.00], neonAmt: 1.0 },
+    ember:       { ground: [0.050, 0.025, 0.020], rim: [0.30, 0.10, 0.05], core: [0.75, 0.40, 0.18], young: [1.00, 0.85, 0.55], ember: [1.00, 0.60, 0.25], neon: [1.00, 0.40, 0.15], neonAmt: 0.8 },
+    ice:         { ground: [0.030, 0.035, 0.050], rim: [0.18, 0.24, 0.34], core: [0.62, 0.72, 0.82], young: [0.95, 0.98, 1.00], ember: [0.75, 0.90, 1.00], neon: [0.55, 0.80, 1.00], neonAmt: 0.7 },
+    moss:        { ground: [0.025, 0.035, 0.020], rim: [0.10, 0.20, 0.06], core: [0.38, 0.55, 0.22], young: [0.80, 0.95, 0.45], ember: [0.85, 1.00, 0.50], neon: [0.55, 1.00, 0.35], neonAmt: 0.6 },
+  };
+  const GKEYS = ['ground', 'rim', 'core', 'young', 'ember', 'neon'];
+  let gradeA = 'sage', gradeB = 'sage', gmix = 1, gradeUntil = 0;
+  const pal = {};
+  function blendGrade() {
+    const A = GRADES[gradeA], B = GRADES[gradeB];
+    for (const k of GKEYS) pal[k] = [0, 1, 2].map(i => A[k][i]*(1 - gmix) + B[k][i]*gmix);
+    pal.neonAmt = A.neonAmt*(1 - gmix) + B.neonAmt*gmix;
+  }
+  function nextGrade(name) {
+    if (gmix < 1 && !name) return;   // let a fade finish before starting another
+    const names = Object.keys(GRADES).filter(n => n !== gradeB);
+    gradeA = gradeB;
+    gradeB = name && GRADES[name] ? name : names[Math.floor(Math.random()*names.length)];
+    gmix = 0; gradeUntil = frame + (240 + Math.random()*300)*60;
+    note('grade', { to: gradeB });
+  }
+  // ---- a slow camera over the periodic field, and a pulse that flares the neon on events ----
+  const cam = { x: Math.random(), y: Math.random(), z: 1.2, h: Math.random()*Math.PI*2 };
+  let pulse = 0;
+  const toUV = (sx, sy) => [((cam.x + (sx - 0.5)/cam.z) % 1 + 1) % 1, ((cam.y + (sy - 0.5)/cam.z) % 1 + 1) % 1];
+
   function layout() {
     if (!innerWidth || !innerHeight) return;
     cssW = innerWidth; cssH = innerHeight;
@@ -127,7 +158,7 @@
     note('visit', { note: mark.note, by: mark.by });
   }
   function arrive(m) {
-    note('arrived', { at: 'mark' });
+    pulse = 0.7; note('arrived', { at: 'mark' });
     if (m.stamp) paintStamp(m.stamp);
     const replies = marks.filter(x => x.re === m.id).reverse();
     thread = replies.length ? { replies, i: 0, next: frame + 540 } : null;
@@ -137,7 +168,7 @@
     route = { r, i: 0, until: 0 }; lastRoute = r; mode = 'route'; visiting = null;
     nextVisit = frame + (240 + Math.random()*180)*60;
     showCaption(`route “${r.name}” · ${r.by}${day(r.at)}`);
-    note('route', { name: r.name, by: r.by });
+    pulse = 0.7; if (Math.random() < 0.5) nextGrade(); note('route', { name: r.name, by: r.by });
   }
   function endRoute() { note('route end', { name: route && route.r.name }); route = null; mode = 'wander'; showCaption(''); }
   function nearestPlace() {
@@ -181,10 +212,10 @@
       } else {
         E.draw(ctx, P.seed, state[0], { u_seed: Math.random()*100, u_px: px() });
       }
-      heading = Math.random()*Math.PI*2; deadCount = 0; restores++; note('return', { mem: memValid });
+      heading = Math.random()*Math.PI*2; deadCount = 0; restores++; pulse = 1; if (Math.random() < 0.5) nextGrade(); note('return', { mem: memValid });
     }
   }
-  function poke() { E.draw(ctx, P.poke, state[1], { u_state: state[0].tex, u_px: px(), u_seed: Math.random()*100 }); state.reverse(); }
+  function poke() { E.draw(ctx, P.poke, state[1], { u_state: state[0].tex, u_px: px(), u_seed: Math.random()*100 }); state.reverse(); pulse = 1; }
   function reseed() { E.draw(ctx, P.seed, state[0], { u_seed: Math.random()*100, u_px: px() }); note('reseed'); }
 
   // ---- stamps: a small glyph painted into the field, that grows and dissolves ----
@@ -210,9 +241,9 @@
     size = clamp(+size || 0.3, 0.05, 0.9);
     const cell = Math.min(simW, simH)*size/Math.max(w, h);
     const rw = w*cell/simW, rh = h*cell/simH;
-    const cx = x == null ? 0.5 : clamp(+x, 0, 1), cy = y == null ? 0.5 : 1 - clamp(+y, 0, 1);
+    const u = toUV(x == null ? 0.5 : clamp(+x, 0, 1), y == null ? 0.5 : 1 - clamp(+y, 0, 1)); const cx = u[0], cy = u[1];
     E.draw(ctx, P.stamp, state[1], { u_state: state[0].tex, u_stamp: stampT, u_rect: [cx - rw/2, cy - rh/2, rw, rh] }); state.reverse();
-    note('stamp', { w, h }); return true;
+    pulse = 1; note('stamp', { w, h }); return true;
   }
 
   // ---- the field as text ----
@@ -299,7 +330,7 @@
   function touched() { document.body.classList.remove('idle'); clearTimeout(idleTimer); idleTimer = setTimeout(() => document.body.classList.add('idle'), 5000); }
   addEventListener('pointermove', touched); addEventListener('pointerdown', touched); addEventListener('keydown', touched); touched();
   let firstTap = true;
-  function setPaint(e) { paint[0] = e.clientX/cssW; paint[1] = 1 - e.clientY/cssH; paint[3] = 0.06; }
+  function setPaint(e) { const u = toUV(e.clientX/cssW, 1 - e.clientY/cssH); paint[0] = u[0]; paint[1] = u[1]; paint[3] = 0.06; }
   canvas.addEventListener('pointerdown', e => {
     if (firstTap) { firstTap = false; if (fsOK) enterFS(); wake(); hint.classList.add('gone'); }
     pointerDown = true; setPaint(e); e.preventDefault();
@@ -564,16 +595,17 @@
   const api = {
     places: PLACES,
     state: () => ({ F: W.F, k: W.k, heading, mode, place: nearestPlace(), visiting: visiting ? { note: visiting.note, by: visiting.by } : null, route: route ? { name: route.r.name, by: route.r.by, point: route.i } : null,
-      mean: stats.mean, std: stats.std, activity: stats.act, alive: stats.alive, flat, aniso, light: lightAngle(), season,
+      mean: stats.mean, std: stats.std, activity: stats.act, alive: stats.alive, flat, aniso, light: lightAngle(), season, grade: gmix < 1 ? gradeA + ' to ' + gradeB : gradeB, camera: { x: +cam.x.toFixed(3), y: +cam.y.toFixed(3), zoom: +cam.z.toFixed(2) },
       uptime: (performance.now() - t0)/1000, frame, steps, mode_gpu: ctx.mode, sim: [simW, simH], marks: marks.length, routes: routes.length, visitors: visits.length, restores, snapshots, log: log.slice(-20) }),
     ascii, log,
     set: (F, k) => { W.F = clamp(+F, BOX.F0, BOX.F1); W.k = clamp(+k, BOX.k0, BOX.k1); note('set'); return api.state(); },
     goto: (name, holdSeconds) => { const p = PLACES[name]; if (!p) return { ok: false, places: Object.keys(PLACES) }; target = { F: p.F, k: p.k, hold: holdSeconds || 90 }; mode = 'goto'; visiting = null; route = null; showCaption(''); note('goto', { name }); return { ok: true, name }; },
     wander: () => { mode = 'wander'; visiting = null; route = null; showCaption(''); return api.state(); },
-    seed: (x, y) => { paint[0] = clamp(+x, 0, 1); paint[1] = 1 - clamp(+y, 0, 1); paint[3] = 0.06; setTimeout(() => { if (!pointerDown) paint[3] = 0; }, 120); note('seed'); return true; },
+    seed: (x, y) => { const u = toUV(clamp(+x, 0, 1), 1 - clamp(+y, 0, 1)); paint[0] = u[0]; paint[1] = u[1]; paint[3] = 0.06; setTimeout(() => { if (!pointerDown) paint[3] = 0; }, 120); note('seed'); return true; },
     poke: () => { poke(); note('poke', { by: 'api' }); return true; },
     stamp: (rows, x, y, size) => paintStamp(rows, x, y, size),
     clear: () => { reseed(); return true; },
+    grade: name => { if (name) nextGrade(name); return { from: gradeA, to: gradeB, mix: +gmix.toFixed(2), all: Object.keys(GRADES) }; },
     glow: g => { if (g != null) { glow = clamp(+g || 0, 0, 2); try { localStorage.setItem('morphogen.glow', String(glow)); } catch (e) {} } return glow; },
     leave, reply: (id, text, by) => leave(text, by, { re: id }),
     checkin, route: addRoute,
@@ -601,13 +633,20 @@
     flat += (flatTarget - flat)*0.006; expo += (expoTarget - expo)*0.004;
     season += (((W.F - BOX.F0)/RF) - season)*0.002;
     aniso = 0.55*Math.pow(Math.max(0, Math.sin(T/70 + 1.2)), 3);
+    if (gmix < 1) gmix = Math.min(1, gmix + 1/(45*60)); else if (frame >= gradeUntil) nextGrade();
+    blendGrade();
+    pulse *= 0.985;
+    cam.h += 0.0004*Math.sin(T/230 + 0.7);
+    const sp = 0.000022*(1 + 0.5*Math.sin(T/300));
+    cam.x = (cam.x + Math.cos(cam.h)*sp + 1) % 1; cam.y = (cam.y + Math.sin(cam.h)*sp + 1) % 1;
+    cam.z = 1.2 + 0.25*Math.sin(T/140 + 2.1);
     theta += 0.0007;
     const n = [Math.cos(theta), Math.sin(theta)];
-    const uni = { u_state: null, u_px: px(), u_dA: 1.0, u_dB: 0.5, u_F: W.F, u_k: W.k, u_n: n, u_aniso: aniso, u_paint: paint };
+    const uni = { u_state: null, u_px: px(), u_dA: 1.0, u_dB: 0.5 + 0.05*Math.sin(T/210), u_F: W.F, u_k: W.k, u_n: n, u_aniso: aniso, u_paint: paint };
     for (let i = 0; i < steps; i++) { uni.u_state = state[0].tex; E.draw(ctx, P.sim, state[1], uni); state.reverse(); }
     E.draw(ctx, P.trail, trail[1], { u_state: state[0].tex, u_trail: trail[0].tex }); trail.reverse();
     const la = T/500;
-    E.draw(ctx, P.render, null, { u_trail: trail[0].tex, u_px: px(), u_light: [Math.cos(la)*0.8, Math.sin(la)*0.8], u_time: T, u_fade: Math.min(1, T/4)*expo, u_flat: flat, u_season: season, u_glow: glow });
+    E.draw(ctx, P.render, null, { u_trail: trail[0].tex, u_px: px(), u_light: [Math.cos(la)*0.8, Math.sin(la)*0.8], u_time: T, u_fade: Math.min(1, T/4)*expo, u_flat: flat, u_glow: glow, u_pulse: pulse, u_cam: [cam.x, cam.y, cam.z], u_ground: pal.ground, u_rim: pal.rim, u_core: pal.core, u_young: pal.young, u_ember: pal.ember, u_neon: pal.neon, u_neonAmt: pal.neonAmt });
     if (frame % 45 === 0) probe();
     if (frame % 12 === 0) { path.push([W.F, W.k]); if (path.length > 400) path.shift(); }
     if (frame % 6 === 0) drawHUD();
@@ -619,6 +658,7 @@
   layout();
   if (!simW) { layout(); }
   nextVisit = (150 + Math.random()*90)*60;
+  gradeUntil = (120 + Math.random()*180)*60; blendGrade();
   for (let i = 0; i < 400 && simW; i++) { E.draw(ctx, P.sim, state[1], { u_state: state[0].tex, u_px: px(), u_dA: 1.0, u_dB: 0.5, u_F: W.F, u_k: W.k, u_n: [1, 0], u_aniso: 0, u_paint: paint }); state.reverse(); }
   next();
 })();

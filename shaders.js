@@ -129,37 +129,32 @@ void main(){ vec2 s = readS(v); gl_FragColor = vec4(0.0, 0.0, min(1.0, s.y*2.0),
 
 SH.RENDER = `
 uniform sampler2D u_trail; uniform vec2 u_px; uniform vec2 u_light;
-uniform float u_time, u_fade, u_flat, u_season, u_glow; varying vec2 v;
-vec3 hsv(vec3 c){ vec3 p = abs(fract(c.xxx + vec3(0.0, 2.0/3.0, 1.0/3.0))*6.0 - 3.0); return c.z*mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y); }
+uniform float u_time, u_fade, u_flat, u_glow, u_pulse, u_neonAmt; uniform vec3 u_cam;
+uniform vec3 u_ground, u_rim, u_core, u_young, u_ember, u_neon; varying vec2 v;
 void main(){
-  vec4 t = texture2D(u_trail, v);
+  // a slow camera: u_cam.xy pans, u_cam.z zooms; the field is periodic so the pan never ends
+  vec2 uv = fract(u_cam.xy + (v - 0.5)/u_cam.z);
+  vec4 t = texture2D(u_trail, uv);
   float b = t.b*0.5, act = t.r, age = t.g;
   // relief: the field as a low landscape lit from u_light
-  float bx = (texture2D(u_trail, v + vec2(u_px.x, 0.0)).b - texture2D(u_trail, v - vec2(u_px.x, 0.0)).b)*0.5;
-  float by = (texture2D(u_trail, v + vec2(0.0, u_px.y)).b - texture2D(u_trail, v - vec2(0.0, u_px.y)).b)*0.5;
+  float bx = (texture2D(u_trail, fract(uv + vec2(u_px.x, 0.0))).b - texture2D(u_trail, fract(uv - vec2(u_px.x, 0.0))).b)*0.5;
+  float by = (texture2D(u_trail, fract(uv + vec2(0.0, u_px.y))).b - texture2D(u_trail, fract(uv - vec2(0.0, u_px.y))).b)*0.5;
   vec3 nrm = normalize(vec3(-bx*4.0, -by*4.0, 1.0));
   vec3 L = normalize(vec3(u_light, 0.9));
   float diff = clamp(dot(nrm, L), 0.0, 1.0);
   float spec = pow(clamp(dot(nrm, normalize(L + vec3(0.0, 0.0, 1.0))), 0.0, 1.0), 28.0);
   float m = smoothstep(0.03, 0.30, b);
-  vec3 ground = vec3(0.043, 0.039, 0.031);
-  vec3 rimC = vec3(0.10, 0.16, 0.17), coreC = vec3(0.40, 0.50, 0.44);
-  vec3 rimW = vec3(0.16, 0.17, 0.11), coreW = vec3(0.52, 0.50, 0.34);
-  vec3 rim = mix(rimC, rimW, u_season), core = mix(coreC, coreW, u_season);
-  vec3 young = vec3(0.78, 0.60, 0.31), ember = vec3(0.98, 0.72, 0.36);
-  vec3 tissue = mix(rim, core, smoothstep(0.12, 0.30, b));
-  tissue = mix(young, tissue, smoothstep(0.0, 0.9, age));
+  vec3 tissue = mix(u_rim, u_core, smoothstep(0.12, 0.30, b));
+  tissue = mix(u_young, tissue, smoothstep(0.0, 0.9, age));
   tissue *= 0.70 + 0.48*diff;
   tissue += spec*0.12;
-  vec3 col = mix(ground, tissue, m);
-  // neon: edges glow in a cool hue that drifts from teal to violet over a couple of minutes,
-  // amber when the season is warm; activity fronts flash in the same light
-  float hue = 0.48 + 0.34*(0.5 + 0.5*sin(u_time/70.0));
-  vec3 neon = mix(hsv(vec3(hue, 0.85, 1.0)), vec3(1.0, 0.62, 0.28), smoothstep(0.45, 0.75, u_season));
+  vec3 col = mix(u_ground, tissue, m);
+  // neon: edges glow in the grade's own light, more where the field is moving, flaring on events
   float edge = smoothstep(0.015, 0.09, length(vec2(bx, by)));
-  col += neon*edge*(0.22 + 0.5*act)*u_glow;
-  col += mix(neon, ember, 0.5)*act*(0.25 + 0.55*m)*(0.6 + 0.4*u_glow);
-  col = mix(col, col*0.6 + ground*0.15, u_flat);
+  float neon = u_neonAmt*u_glow*(1.0 + 1.5*u_pulse);
+  col += u_neon*edge*(0.22 + 0.5*act)*neon;
+  col += mix(u_neon, u_ember, 0.5)*act*(0.25 + 0.55*m)*(0.6 + 0.4*neon);
+  col = mix(col, col*0.6 + u_ground*0.15, u_flat);
   col *= u_fade;
   col += (hash(gl_FragCoord.xy + fract(u_time)*100.0) - 0.5)*(1.5/255.0);
   gl_FragColor = vec4(col, 1.0);
