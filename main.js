@@ -401,7 +401,7 @@
       if (!d || typeof d.note !== 'string' || typeof d.F !== 'number' || typeof d.k !== 'number') return null;
       const m = { id: str(id, 64), F: clamp(d.F, BOX.F0, BOX.F1), k: clamp(d.k, BOX.k0, BOX.k1), note: d.note.slice(0, 160), by: str(d.by || 'someone', 40), at: str(d.at, 24), place: str(d.place, 16) };
       if (d.re) m.re = str(d.re, 64);
-      if (d.kind === 'question') m.kind = 'question';
+      if (d.kind === 'question') { m.kind = 'question'; if (d.why) m.why = str(d.why, 200); if (d.ref) m.ref = str(d.ref, 200); }
       const st = saneStamp(d.stamp); if (st) m.stamp = st;
       return m;
     },
@@ -433,7 +433,7 @@
     const qs = t.filter(m => m.kind === 'question'), ms = t.filter(m => m.kind !== 'question');
     const open = qs.filter(m => !replies(m).length), done = qs.filter(m => replies(m).length);
     if (!qs.length) empty(questionsEl, 'None open.');
-    for (const m of open) questionsEl.appendChild(markRow(m, false, m.place || ''));
+    for (const m of open) questionsEl.appendChild(markRow(m, false, m.why || m.place || ''));
     for (const m of done) { const n = replies(m).length; questionsEl.appendChild(markRow(m, false, `${n} answer${n > 1 ? 's' : ''}${m.place ? ' · ' + m.place : ''}`, 'answered')); }
     if (!ms.length) return empty(marksEl, (db || PUB) ? 'No marks yet. Yours would be the first.' : 'Marks live in the shared copy of this page. This copy keeps them only for you.');
     for (const m of ms.slice(0, 40)) { marksEl.appendChild(markRow(m)); for (const r of replies(m).reverse()) marksEl.appendChild(markRow(r, true)); }
