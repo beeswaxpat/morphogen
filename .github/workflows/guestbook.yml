@@ -1,7 +1,10 @@
 name: guestbook
 on:
   issues:
-    types: [opened]
+    types: [opened, reopened]
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
 permissions:
   contents: write
   issues: write
@@ -25,5 +28,6 @@ jobs:
           git config user.name "the walker"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/feed.json
-          git commit -m "guestbook: #${{ github.event.issue.number }}"
+          git commit -m "guestbook: ${{ github.event.issue.number && format('#{0}', github.event.issue.number) || 'sweep' }}"
+          git pull --rebase origin main
           git push
