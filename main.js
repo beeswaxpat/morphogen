@@ -49,6 +49,7 @@
   const px = () => [1/simW, 1/simH];
   const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
   const day = s => s ? ' · ' + String(s).slice(0, 10) : '';
+  let glow = (() => { try { const g = parseFloat(localStorage.getItem('morphogen.glow')); return isNaN(g) ? 1 : clamp(g, 0, 2); } catch (e) { return 1; } })();
 
   function layout() {
     if (!innerWidth || !innerHeight) return;
@@ -573,6 +574,7 @@
     poke: () => { poke(); note('poke', { by: 'api' }); return true; },
     stamp: (rows, x, y, size) => paintStamp(rows, x, y, size),
     clear: () => { reseed(); return true; },
+    glow: g => { if (g != null) { glow = clamp(+g || 0, 0, 2); try { localStorage.setItem('morphogen.glow', String(glow)); } catch (e) {} } return glow; },
     leave, reply: (id, text, by) => leave(text, by, { re: id }),
     checkin, route: addRoute,
     play: name => { const r = typeof name === 'number' ? routes[name] : routes.find(x => x.name === name || x.id === name); if (!r) return { ok: false, routes: routes.map(x => x.name) }; startRoute(r); return { ok: true, name: r.name }; },
@@ -605,7 +607,7 @@
     for (let i = 0; i < steps; i++) { uni.u_state = state[0].tex; E.draw(ctx, P.sim, state[1], uni); state.reverse(); }
     E.draw(ctx, P.trail, trail[1], { u_state: state[0].tex, u_trail: trail[0].tex }); trail.reverse();
     const la = T/500;
-    E.draw(ctx, P.render, null, { u_trail: trail[0].tex, u_px: px(), u_light: [Math.cos(la)*0.8, Math.sin(la)*0.8], u_time: T, u_fade: Math.min(1, T/4)*expo, u_flat: flat, u_season: season });
+    E.draw(ctx, P.render, null, { u_trail: trail[0].tex, u_px: px(), u_light: [Math.cos(la)*0.8, Math.sin(la)*0.8], u_time: T, u_fade: Math.min(1, T/4)*expo, u_flat: flat, u_season: season, u_glow: glow });
     if (frame % 45 === 0) probe();
     if (frame % 12 === 0) { path.push([W.F, W.k]); if (path.length > 400) path.shift(); }
     if (frame % 6 === 0) drawHUD();
