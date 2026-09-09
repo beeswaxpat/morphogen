@@ -106,7 +106,7 @@
     }
     state = ns; trail = nt; mem = nm;
     if (!probeT) probeT = E.target(ctx, 32, 32, 'u8');
-    hud.width = Math.round(140*dpr); hud.height = Math.round(160*dpr);
+    hud.width = Math.round(150*dpr); hud.height = Math.round(150*dpr);
   }
 
   // ---- the walker ----
@@ -119,7 +119,7 @@
   }
   function walk() {
     if (mode === 'hold') {
-      if (thread && frame >= thread.next && thread.i < thread.replies.length) { const r = thread.replies[thread.i++]; showCaption(`↳ “${r.note}” · ${r.by}${day(r.at)}`); thread.next = frame + 540; }
+      if (thread && frame >= thread.next && thread.i < thread.replies.length) { const r = thread.replies[thread.i++]; showCaption(r.note, 0, `answer · ${r.by}${day(r.at)}`); thread.next = frame + 540; }
       if (frame >= holdUntil) { mode = 'wander'; visiting = null; thread = null; showCaption(''); }
       return;
     }
@@ -128,7 +128,7 @@
     if (mode === 'route') {
       const pt = route.r.points[route.i];
       if (route.until) { if (frame >= route.until) { route.i++; route.until = 0; if (route.i >= route.r.points.length) endRoute(); } return; }
-      if (stepToward(pt, 2.5)) { route.until = frame + pt.s*60; showCaption(`route “${route.r.name}” · ${route.r.by} · ${route.i + 1} of ${route.r.points.length}`); }
+      if (stepToward(pt, 2.5)) { route.until = frame + pt.s*60; showCaption(route.r.name, 0, `route · ${route.i + 1} of ${route.r.points.length} · ${route.r.by}`); }
       return;
     }
     heading += (Math.random() - 0.5)*0.03;
@@ -154,7 +154,7 @@
     if (mark.re) { const p = marks.find(m => m.id === mark.re); if (p) mark = p; }
     target = { F: mark.F, k: mark.k }; visiting = mark; route = null; thread = null; mode = 'visit';
     nextVisit = frame + (180 + Math.random()*120)*60;
-    showCaption(`“${mark.note}” · ${mark.by}${day(mark.at)}`);
+    showCaption(mark.note, 0, `${mark.kind === 'question' ? 'open question' : 'mark'} · ${mark.by}${day(mark.at)}`);
     note('visit', { note: mark.note, by: mark.by });
   }
   function arrive(m) {
@@ -167,7 +167,7 @@
   function startRoute(r) {
     route = { r, i: 0, until: 0 }; lastRoute = r; mode = 'route'; visiting = null;
     nextVisit = frame + (240 + Math.random()*180)*60;
-    showCaption(`route “${r.name}” · ${r.by}${day(r.at)}`);
+    showCaption(r.name, 0, `route · ${r.by}${day(r.at)}`);
     pulse = 0.7; if (Math.random() < 0.5) nextGrade(); note('route', { name: r.name, by: r.by });
   }
   function endRoute() { note('route end', { name: route && route.r.name }); route = null; mode = 'wander'; showCaption(''); }
@@ -269,7 +269,8 @@
     const w = hud.width, h = hud.height, s = dpr;
     hctx.clearRect(0, 0, w, h);
     hctx.save(); hctx.scale(s, s);
-    const mx = 14, my = 14, ms = 112;
+    const mx = 13, my = 13, ms = 124;
+    const nc = pal.neon ? pal.neon.map(x => Math.round(Math.min(1, x)*255)).join(',') : '230,220,180';
     if (MAP) {
       const G = MAP.G, cell = ms/G;
       for (let i = 0; i < G*G; i++) {
@@ -281,7 +282,7 @@
         hctx.fillRect(mx + tx*cell, my + (G - 1 - ty)*cell, cell + 0.5, cell + 0.5);
       }
     }
-    hctx.strokeStyle = 'rgba(140,145,130,0.25)'; hctx.lineWidth = 1; hctx.strokeRect(mx + 0.5, my + 0.5, ms - 1, ms - 1);
+    hctx.strokeStyle = `rgba(${nc},0.35)`; hctx.lineWidth = 1; hctx.strokeRect(mx + 0.5, my + 0.5, ms - 1, ms - 1);
     const X = F => mx + (F - BOX.F0)/RF*ms, Y = k => my + ms - (k - BOX.k0)/RK*ms;
     for (const r of routes) {
       const on = route && route.r === r;
@@ -294,26 +295,32 @@
     if (path.length > 1) {
       for (let i = 1; i < path.length; i++) {
         const a = i/path.length;
-        hctx.strokeStyle = `rgba(230,220,180,${0.05 + 0.5*a*a})`; hctx.lineWidth = 1;
+        hctx.strokeStyle = `rgba(${nc},${0.05 + 0.6*a*a})`; hctx.lineWidth = 1;
         hctx.beginPath(); hctx.moveTo(X(path[i-1][0]), Y(path[i-1][1])); hctx.lineTo(X(path[i][0]), Y(path[i][1])); hctx.stroke();
       }
     }
     if (memValid && memPos) { hctx.fillStyle = 'rgba(150,160,140,0.6)'; hctx.fillRect(X(memPos.F) - 1, Y(memPos.k) - 1, 2, 2); }
-    hctx.fillStyle = 'rgba(245,170,80,0.95)'; hctx.beginPath(); hctx.arc(X(W.F), Y(W.k), 1.8, 0, Math.PI*2); hctx.fill();
+    hctx.shadowColor = `rgba(${nc},0.9)`; hctx.shadowBlur = 6;
+    hctx.fillStyle = `rgba(${nc},1)`; hctx.beginPath(); hctx.arc(X(W.F), Y(W.k), 2.2, 0, Math.PI*2); hctx.fill();
+    hctx.shadowBlur = 0;
     if (aniso > 0.01) {
       const cx = mx + ms - 9, cy = my + 9, L = 7*aniso/0.6;
       hctx.strokeStyle = 'rgba(200,200,190,0.5)'; hctx.beginPath();
       hctx.moveTo(cx - Math.cos(theta)*L, cy + Math.sin(theta)*L); hctx.lineTo(cx + Math.cos(theta)*L, cy - Math.sin(theta)*L); hctx.stroke();
     }
-    hctx.fillStyle = 'rgba(160,165,150,0.55)'; hctx.font = '10px ui-monospace,Menlo,Consolas,monospace';
-    const pl = nearestPlace();
-    hctx.fillText('F ' + W.F.toFixed(4) + '   k ' + W.k.toFixed(4), mx, my + ms + 16);
-    if (pl) hctx.fillText(pl, mx, my + ms + 30);
     hctx.restore();
+    // telemetry, top left
+    const T = (performance.now() - t0)/1000, hh = Math.floor(T/3600), mm = Math.floor(T/60) % 60, ss = Math.floor(T) % 60;
+    const pl = nearestPlace();
+    const g = gmix < 1 ? gradeA + ' → ' + gradeB : gradeB;
+    tele.innerHTML = `${mode}${route ? ' · ' + route.r.name : ''} · ${g} · ${pl || 'between'}<br>F <b>${W.F.toFixed(4)}</b>  K <b>${W.k.toFixed(4)}</b>  T <b>${hh ? hh + ':' : ''}${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}</b>`;
+    document.documentElement.style.setProperty('--neon', `rgb(${nc})`);
   }
 
   // ---- UI: fullscreen, wake lock, idle fade, panel, captions ----
-  const ui = $('ui'), hint = $('hint'), panel = $('panel'), caption = $('caption');
+  const ui = $('ui'), hint = $('hint'), panel = $('panel'), caption = $('caption'), tele = $('tele');
+  const capLab = caption.querySelector('.lab'), capTxt = caption.querySelector('.txt');
+  let capFull = '', capN = 0;
   const fsBtn = $('fs'), infoBtn = $('info'), askBtn = $('ask'), asciiPre = $('ascii');
   const fsOK = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
   const isFS = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
@@ -354,10 +361,17 @@
     else if (e.key === 'r') reseed();
   });
   let captionTimer = 0;
-  function showCaption(text, ms) {
+  function showCaption(text, ms, label) {
     clearTimeout(captionTimer);
-    caption.textContent = text; caption.classList.toggle('on', !!text);
+    text = String(text || ''); capFull = text; capN = 0;
+    capLab.textContent = label || ''; capTxt.textContent = '';
+    caption.classList.toggle('on', !!text); caption.classList.remove('done');
     if (text && ms) captionTimer = setTimeout(() => caption.classList.remove('on'), ms);
+  }
+  function typeCaption() {
+    if (capN >= capFull.length) return;
+    capN = Math.min(capFull.length, capN + 2); capTxt.textContent = capFull.slice(0, capN);
+    if (capN >= capFull.length) caption.classList.add('done');
   }
   for (const n in PLACES) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'place';
@@ -551,7 +565,7 @@
     try {
       const r = await sample(prompt, { modelTier: tier(), cache: false });
       const text = lastLine(r.text).slice(0, 160);
-      showCaption(text ? 'Claude: ' + text : '', 40000); note('claude', { said: text });
+      showCaption(text, 40000, 'claude'); note('claude', { said: text });
       askBtn.textContent = ASK;
       return text;
     } catch (e) { if (askFail(e)) { askBusy = false; return null; } askBtn.textContent = ASK; return null; }
@@ -563,7 +577,7 @@
     if (!caps || !caps.tools) return ask();
     askBusy = true; askBtn.disabled = true; askBtn.textContent = 'Claude has the field…';
     let rounds = 0; const did = [];
-    const hand = what => { if (++rounds > 9) throw new Error('enough hands for now; write your line'); if (what) { did.push(what); showCaption('Claude ' + what); } };
+    const hand = what => { if (++rounds > 9) throw new Error('enough hands for now; write your line'); if (what) { did.push(what); showCaption(what, 0, 'claude, now'); } };
     const look = () => ({ F: +W.F.toFixed(4), k: +W.k.toFixed(4), place: nearestPlace(), mode, field: ascii(64, 24) });
     const tools = [
       { name: 'look', description: 'Returns the field as 64x24 text (denser characters mean more of chemical B) with the current F, k and nearest named place. Call it after you change something; the field needs a few seconds to react, so look once or twice, not every round.', execute: () => { hand(); return look(); } },
@@ -578,7 +592,7 @@
     try {
       const r = await sample(prompt, { modelTier: tier(), tools });
       const line = lastLine(r.text).slice(0, 160);
-      showCaption(line ? 'Claude: ' + line : '', 45000); note('claude', { said: line, did });
+      showCaption(line, 45000, 'claude'); note('claude', { said: line, did });
       lastAt.visits = 0;
       await checkin(line, 'Claude, from the page', 'the viewer', did);
       askBtn.textContent = ASK;
@@ -630,6 +644,7 @@
     if (frame % 30 === 0 && (innerWidth !== cssW || innerHeight !== cssH)) layout();
     const T = (now - t0)/1000;
     walk();
+    if (frame % 2 === 0) typeCaption();
     flat += (flatTarget - flat)*0.006; expo += (expoTarget - expo)*0.004;
     season += (((W.F - BOX.F0)/RF) - season)*0.002;
     aniso = 0.55*Math.pow(Math.max(0, Math.sin(T/70 + 1.2)), 3);
@@ -652,7 +667,7 @@
     if (frame % 6 === 0) drawHUD();
     if (frame % 150 === 0 && (panel.hidden === false || BG)) asciiPre.textContent = ascii(64, 24);
     if (frame % 600 === 0) asciiPre.textContent = ascii(64, 24);
-    if (!saidLast && frame > 40*60 && mode === 'wander' && visits.length) { saidLast = true; const v = visits[0]; showCaption(`last here: ${v.by}${day(v.at)}${v.line ? ' · “' + v.line + '”' : ''}`, 16000); }
+    if (!saidLast && frame > 40*60 && mode === 'wander' && visits.length) { saidLast = true; const v = visits[0]; showCaption(v.line || 'was here', 16000, `last here · ${v.by}${day(v.at)}`); }
   }
   if (BG) { window.__set = api.set; window.__put = (k, d) => db && db.collection(k).add(d); window.__visitNow = () => { const t = tops(); return t.length && startVisit(t[0]); }; window.__advance = n => { if (!t0) { t0 = performance.now(); last = t0; } for (let i = 0; i < n; i++) tick(t0 + (frame + 1)*16.67, true); return api.state(); }; }
   layout();
