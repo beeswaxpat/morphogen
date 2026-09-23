@@ -166,7 +166,6 @@ vec4 chrysanthemum(vec2 q, float bx, float by, out float outer){
   vec3 col = vec3(0.012, 0.008, 0.02);
   float mask = smoothstep(0.78*unfold + 0.02, 0.70*unfold, r);
   outer = 1.0 - mask;
-  float glow = 0.0;
   for (int i = 0; i < 4; i++) {
     float k = float(i);
     float R = (0.66 - 0.14*k)*unfold;
@@ -178,24 +177,41 @@ vec4 chrysanthemum(vec2 q, float bx, float by, out float outer){
     float inside = smoothstep(e + 0.004, e - 0.004, r);
     // each layer casts a soft shadow on the one behind it, so the flower has depth
     col *= 1.0 - 0.55*smoothstep(e + 0.035, e, r)*(1.0 - inside);
-    float idx = mod(floor(t/3.14159 + 0.5), N);
+    // stained glass, after a rose window: each petal is leaded into four panes (either side of the
+    // midrib, inner and outer), each pane its own piece of glass, lit from behind, the field as its texture
+    float tr = floor(t/3.14159 + 0.5);
+    float idx = mod(tr, N);
+    float tt = t - tr*3.14159;                       // -pi/2..pi/2 across the petal, 0 on the midrib
+    float along = r/max(e, 0.01);
+    float side = tt > 0.0 ? 1.0 : 0.0, outerPane = along > 0.56 ? 1.0 : 0.0;
     vec3 jw = jewel(idx + k*2.0);
+    vec3 glass = mix(jw, jewel(idx + k*2.0 + 1.0 + side), 0.10 + 0.10*outerPane);
     vec2 fuv = vec2(fract(t/3.14159 + 0.5)*0.30 + bx + k*0.21, r/max(R, 0.01)*0.45 + by + k*0.17 - u_time*0.01);
     float b = texture2D(u_trail, fract(fuv)).b*0.5;
     float cell = smoothstep(0.10, 0.28, b);
-    float along = r/max(e, 0.01);
-    // dark at the base, lit toward the tip; the field shows as a sheen, not as spots
-    vec3 pc = jw*(0.30 + 0.75*along)*(0.72 + 0.28*cell);
-    pc = mix(pc, mix(jw, u_cream, 0.55), 0.22*cell*along);
-    // the midrib: a thin line of light down the middle of every petal
-    pc += mix(jw, u_cream, 0.6)*pow(rho, 60.0)*smoothstep(0.1, 0.6, along)*0.35;
-    // each petal is cupped: darker toward its sides, with a fine lit edge where it meets its neighbour
-    pc *= 0.42 + 0.58*smoothstep(0.0, 0.30, rho);
-    pc += mix(jw, u_cream, 0.5)*(1.0 - smoothstep(0.0, 0.035, rho))*smoothstep(0.05, 0.3, along)*0.35;
-    col = mix(col, pc*(0.80 + 0.07*k), inside);
-    glow += exp(-pow((r - e)/0.0028, 2.0))*(0.35 + 0.65*rho);
+    // distances to the leads, in screen units: the outline, the joins between petals, the midrib, the cross bar
+    float arcw = r*2.0/N;
+    float dOut = abs(r - e);
+    float dJoin = (1.5708 - abs(tt))*arcw;
+    float dRib = abs(tt)*arcw;
+    float dBar = abs(r - 0.56*e);
+    float dPane = min(min(dJoin, dRib), dBar);
+    float dLead = min(dOut, dPane);
+    // light comes through: brightest in the middle of a pane, the glass mottled by the living field
+    float through = 0.70 + 0.62*smoothstep(0.0, 0.05, dPane)*smoothstep(0.0, 0.05, dOut);
+    glass = mix(glass, glass*glass*1.7, 0.45);   // deeper, richer, the way lit glass reads
+    vec3 pc = glass*through*(0.86 + 0.22*cell);
+    pc += mix(glass, u_cream, 0.6)*0.10*cell*smoothstep(0.02, 0.06, dPane);
+    // the leads: dark came with a faint bright edge where the light catches it
+    float lw = 0.0042;
+    float lead = 1.0 - smoothstep(lw*0.55, lw, dLead);
+    float catchLight = exp(-pow((dLead - lw)/0.0012, 2.0));
+    pc = mix(pc, vec3(0.025, 0.02, 0.03), lead);
+    pc += mix(glass, u_cream, 0.7)*catchLight*0.22;
+    col = mix(col, pc*(0.84 + 0.06*k), inside);
+    // the outline lead belongs to the petal, so draw it where the petal edge is, over what lies behind
+    col = mix(col, vec3(0.025, 0.02, 0.03), (1.0 - smoothstep(lw*0.55, lw, dOut))*step(r, e + lw));
   }
-  col += mix(u_cream, u_gold, 0.35)*min(glow, 1.5)*0.60;
   // the eye: a small core of light that becomes the way through
   float eye = exp(-r*r*900.0)*(1.0 - u_go);
   col += u_cream*eye*0.9;
