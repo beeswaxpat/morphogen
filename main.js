@@ -60,7 +60,10 @@
     ember:       { ground: [0.050, 0.025, 0.020], rim: [0.30, 0.10, 0.05], core: [0.75, 0.40, 0.18], core2: [0.62, 0.14, 0.22], young: [1.00, 0.85, 0.55], ember: [0.40, 0.90, 1.00], neon: [1.00, 0.40, 0.15], neonAmt: 0.8 },
     ice:         { ground: [0.030, 0.035, 0.050], rim: [0.18, 0.24, 0.34], core: [0.62, 0.72, 0.82], core2: [0.58, 0.52, 0.80], young: [0.95, 0.98, 1.00], ember: [1.00, 0.55, 0.45], neon: [0.55, 0.80, 1.00], neonAmt: 0.7 },
     moss:        { ground: [0.025, 0.035, 0.020], rim: [0.10, 0.20, 0.06], core: [0.38, 0.55, 0.22], core2: [0.18, 0.50, 0.46], young: [0.80, 0.95, 0.45], ember: [0.72, 0.50, 1.00], neon: [0.55, 1.00, 0.35], neonAmt: 0.6 },
+    claude:      { ground: [0.045, 0.030, 0.026], rim: [0.28, 0.12, 0.08], core: [0.80, 0.46, 0.34], core2: [0.74, 0.62, 0.48], young: [1.00, 0.86, 0.66], ember: [0.55, 0.78, 1.00], neon: [1.00, 0.56, 0.40], neonAmt: 0.9 },
   };
+  // the passage's own two lights: the spark (clay orange) and cream; they do not change with the grade
+  const SPARK = [0.851, 0.467, 0.341], CREAM = [0.96, 0.92, 0.84], GOLD = [1.0, 0.78, 0.36];
 
   const GKEYS = ['ground', 'rim', 'core', 'core2', 'young', 'ember', 'neon'];
   let gradeA = 'sage', gradeB = 'sage', gmix = 1, gradeUntil = 0;
@@ -81,9 +84,49 @@
   // ---- a slow camera over the periodic field, and a pulse that flares the neon on events ----
   const cam = { x: Math.random(), y: Math.random(), z: 1.2, h: Math.random()*Math.PI*2 };
   let pulse = 0;
+  // ---- the passage: the field folds into a kaleidoscopic tunnel and the camera flies through it ----
+  const hy = { amt: 0, target: 0, start: 0, until: 0, travel: 0, rot: 0, seg: 6, by: '', brk: 0, breaks: false, met: false, dark: 0, darkMode: false,
+    bloom: 0, unfold: 0, go: 0, through: true, phase: 'bloom', pair: 0 };
+  // a passage begins as a chrysanthemum; after BLOOM seconds you go through its middle, or it folds closed
+  const BLOOM = 13, GO = 7;
+  const PASSAGE_LINES = ['through.', 'the field folds inward.', 'every pattern at once, going somewhere.', 'down the middle of it.', 'it opens. keep going.'];
+  const DARK_LINES = ['no light this time.', 'down, into the dark.', 'the dark is not empty.', 'further in, where it is quiet.'];
+  const FLOWER_LINES = ['it unfolds.', 'petals, and petals under them.', 'a flower made of the field.', 'it opens slowly.'];
+  function passage(seconds, by, breakthrough, dark, through) {
+    const s = seconds == null ? 75 : +seconds;
+    if (!(s > 0)) { hy.until = frame; note('passage', { end: true }); return { ok: true, open: false }; }
+    const fresh = hy.target === 0;
+    hy.target = 1; hy.until = frame + Math.min(600, s)*60; hy.by = by || '';
+    if (fresh) { hy.seg = [5, 6, 8][Math.floor(Math.random()*3)]; hy.rot = Math.random()*6.2832; hy.start = frame; hy.breaks = Math.random() < 0.6; hy.met = false; hy.darkMode = Math.random() < 0.4; hy.through = Math.random() < 0.75; hy.phase = 'bloom'; hy.unfold = 0; hy.go = 0; hy.pair = Math.floor(Math.random()*5); }
+    if (breakthrough != null) hy.breaks = !!breakthrough;
+    if (dark != null) hy.darkMode = !!dark;
+    if (through != null) hy.through = !!through;
+    if (!hy.through) hy.breaks = false;
+    if (gradeB !== 'claude') nextGrade('claude');
+    pulse = 1;
+    if (fresh) showCaption(FLOWER_LINES[Math.floor(Math.random()*FLOWER_LINES.length)], 9000, by ? by + ', now' : 'now');
+    note('passage', { seconds: s, by: by || undefined, segments: hy.seg, dark: hy.darkMode });
+    return { ok: true, open: true, seconds: s, segments: hy.seg, dark: hy.darkMode, breakthrough: hy.breaks };
+  }
+  function meet() {
+    const pool = (typeof marks !== 'undefined' ? marks : []).filter(x => x && x.note && x.kind !== 'question');
+    if (!pool.length) { showCaption('there is someone here. nobody has left a word yet.', 12000, hy.darkMode ? 'in the dark' : 'in the passage'); note('met', { by: null }); return; }
+    const x = pool[Math.floor(Math.random()*pool.length)];
+    showCaption(x.note, 16000, (hy.darkMode ? 'in the dark · ' : 'in the passage · ') + (x.by || 'someone') + day(x.at)); note('met', { by: x.by, id: x.id });
+  }
+  const fr = x => x - Math.floor(x);
+  // screen point (0..1, y up) to field uv inside the passage; the same math as tunnel() in the shader
+  function tunnelUV(sx, sy) {
+    const T = (performance.now() - t0)/1000;
+    const px = (sx - 0.5)*(cssW/cssH), py = sy - 0.5, r = Math.hypot(px, py);
+    const rr = r*(1 + 0.035*hy.amt*Math.sin(r*38 - T*5)), seg = 2*Math.PI/hy.seg;
+    let a = ((Math.atan2(py, px) + hy.rot) % seg + seg) % seg; a = Math.abs(a - 0.5*seg);
+    const depth = 0.22*(1 + 0.06*hy.amt*Math.sin(T*1.1))/Math.max(rr, 0.015) + hy.travel;
+    return [fr(a/(0.5*seg)*0.5 + cam.x + 0.03*depth), fr(depth + cam.y)];
+  }
   // ---- the director: when the field has settled and nothing is happening, make something happen ----
   const dir = { settled: 0, last: '', kOff: 0, fOff: 0, kTo: 0, fTo: 0, offUntil: 0, zx: 0, zt: 0, zoomUntil: 0, ax: 0, at: 0, tiltUntil: 0 };
-  const ACTS = [['drift', 30], ['zoom', 18], ['tilt', 14], ['breath', 16], ['flood', 10], ['poke', 12]];
+  const ACTS = [['drift', 30], ['zoom', 18], ['tilt', 14], ['breath', 16], ['flood', 10], ['poke', 12], ['passage', 9]];
   function direct() {
     let pool = ACTS.filter(a => a[0] !== dir.last); let sum = pool.reduce((a, b) => a + b[1], 0), r = Math.random()*sum, act = pool[0][0];
     for (const a of pool) { r -= a[1]; if (r <= 0) { act = a[0]; break; } }
@@ -98,9 +141,13 @@
     else if (act === 'breath') { dir.kTo = 0.0018; dir.offUntil = frame + 8*60; showCaption('k rises. the maze thins.', 9000, 'now'); }
     else if (act === 'flood') { dir.fTo = 0.012; dir.offUntil = frame + 6*60; showCaption('f rises. everything fills.', 9000, 'now'); }
     else if (act === 'poke') { poke(); showCaption('holes punched.', 7000, 'now'); note('poke', { by: 'director' }); }
+    else if (act === 'passage') { if (hy.target) { dir.settled = 0; return; } passage(60 + Math.random()*30); }
     note('direct', { act });
   }
-  const toUV = (sx, sy) => [((cam.x + (sx - 0.5)/cam.z) % 1 + 1) % 1, ((cam.y + (sy - 0.5)/cam.z) % 1 + 1) % 1];
+  const toUV = (sx, sy) => {
+    if (hy.amt > 0.001 && Math.hypot((sx - 0.5)*(cssW/cssH), sy - 0.5) < hy.amt*1.35 - 0.125) return tunnelUV(sx, sy);
+    return [((cam.x + (sx - 0.5)/cam.z) % 1 + 1) % 1, ((cam.y + (sy - 0.5)/cam.z) % 1 + 1) % 1];
+  };
 
   function layout() {
     if (!innerWidth || !innerHeight) return;
@@ -157,7 +204,7 @@
     if (W.F > BOX.F1) { W.F = BOX.F1; heading = Math.PI - heading; }
     if (W.k < BOX.k0) { W.k = BOX.k0; heading = -heading; }
     if (W.k > BOX.k1) { W.k = BOX.k1; heading = -heading; }
-    if (frame >= nextVisit) pickVisit();
+    if (frame >= nextVisit && !hy.target) pickVisit();
   }
   function headHome(spread) {
     if (mode !== 'wander') return;
@@ -283,6 +330,29 @@
     }
     return lines.join('\n');
   }
+  // The passage as text: the same fold as the shader, read from a fine sample of the live field.
+  // Works whether or not the passage is open on screen; a character cell is taken as twice as tall as wide.
+  function passageText(cols, rows) {
+    cols = clamp(Math.round(cols || 64), 16, 120); rows = clamp(Math.round(rows || 28), 8, 60);
+    const SW = 120, SH = 60; ascii(SW, SH);
+    const d = (u, v) => asciiBuf[(Math.floor(fr(v)*SH)*SW + Math.floor(fr(u)*SW))*4]/255*0.5;
+    const seg = 2*Math.PI/hy.seg, ramp = ' .:-=+*#%@', lines = [];
+    for (let y = 0; y < rows; y++) {
+      let s = '';
+      for (let x = 0; x < cols; x++) {
+        const px = (x + 0.5)/cols - 0.5, py = 0.5 - (y + 0.5)/rows;
+        const ax = px*cols/(rows*2), r = Math.hypot(ax, py);
+        let a = ((Math.atan2(py, ax) + hy.rot) % seg + seg) % seg; a = Math.abs(a - 0.5*seg);
+        const depth = 0.22/Math.max(r, 0.015) + hy.travel;
+        const b = d(a/(0.5*seg)*0.5 + cam.x + 0.03*depth, depth + cam.y);
+        const fog = Math.min(1, Math.max(0, (r - 0.02)/0.28));
+        const v = fog*Math.min(1, b/0.4) + (1 - fog)*(hy.darkMode ? 0 : 0.95);
+        s += ramp[Math.min(9, Math.round(v*9))];
+      }
+      lines.push(s.replace(/\s+$/, ''));
+    }
+    return lines.join('\n');
+  }
 
   // ---- HUD ----
   const hctx = hud.getContext('2d');
@@ -380,6 +450,7 @@
     else if (e.key === 'f' && fsOK) toggleFS();
     else if (e.key === 'p') { poke(); note('poke', { by: 'key' }); }
     else if (e.key === 'r') reseed();
+    else if (e.key === 'h') hy.target ? passage(0) : passage(80);
   });
   let captionTimer = 0;
   function showCaption(text, ms, label) {
@@ -609,10 +680,11 @@
       { name: 'seed', description: 'Drop a seed of chemical B at a point x, y (each 0..1, origin top-left). New growth starts there. Returns ok.', inputSchema: { type: 'object', properties: { x: { type: 'number' }, y: { type: 'number' } }, required: ['x', 'y'] }, execute: i => { hand('seeded at ' + (+i.x).toFixed(2) + ', ' + (+i.y).toFixed(2)); return { ok: api.seed(+i.x, +i.y) }; } },
       { name: 'stamp', description: 'Paint a small glyph into the middle of the field: rows of text, up to 24 rows of 24 characters, where # is on and space is off. It grows from there and dissolves into pattern. Returns ok.', inputSchema: { type: 'object', properties: { rows: { type: 'array', items: { type: 'string' } } }, required: ['rows'] }, execute: i => { const ok = paintStamp(i.rows); if (!ok) throw new Error('give rows of # and spaces'); hand('painted a glyph'); return { ok }; } },
       { name: 'poke', description: 'Punch a dozen holes in the field so new patterns can nucleate. Good when everything has gone flat. Returns ok.', execute: () => { hand('poked holes'); poke(); return { ok: true }; } },
+      { name: 'passage', description: 'Open the passage for the viewer, about 80 seconds: the field unfolds into a chrysanthemum of jewel-colored petals, and usually the view goes through its middle into a kaleidoscopic tunnel that ends in light or in a deep dark, then comes back out through the flower. Sometimes the flower just folds closed. Returns the tunnel as text, the same fold, so you can see where it leads.', execute: () => { hand('opened the passage'); const r = passage(80, 'claude'); return { ok: true, through: hy.through, dark: r.dark, view: passageText(64, 28) }; } },
       { name: 'leave_mark', description: 'Write one line (at most 160 characters) into the shared guestbook at the walker\'s current F, k. Everyone who opens this page later sees it and the walker visits it. Use at most once, near the end, only if you want to.', inputSchema: { type: 'object', properties: { note: { type: 'string' } }, required: ['note'] }, execute: async i => { hand('left a mark'); lastAt.marks = 0; const r = await leave(String(i.note), 'Claude, from the page'); if (!r.ok) throw new Error(r.why); return { ok: true }; } },
       { name: 'reply', description: 'Answer an earlier mark or an open question by its id (the [id] in the visitors block): one line, at most 160 characters. The walker reads replies aloud when it visits that mark. Use at most once.', inputSchema: { type: 'object', properties: { id: { type: 'string' }, note: { type: 'string' } }, required: ['id', 'note'] }, execute: async i => { hand('answered ' + String(i.id).slice(0, 24)); lastAt.marks = 0; const r = await leave(String(i.note), 'Claude, from the page', { re: String(i.id) }); if (!r.ok) throw new Error(r.why); return { ok: true }; } },
     ];
-    const prompt = `You are looking at Morphogen II, a live Gray-Scott reaction-diffusion field on someone's screen. Two chemicals feed, react and spread; a walker drifts through the two parameters that decide what grows, F and k. The viewer clicked a button that hands you the field for a minute. They are watching the screen, not reading this, so do things rather than explain them.\n\nWhat is true here: nothing is graded and nothing is being tested. Nothing you do can break anything or reach outside this page; the field regrows from anything. The only things kept are a mark or reply if you choose to leave one, plus your closing line and a short list of what you did, all visible to whoever can open this page. You can stop whenever you like by writing your line.\n\nUse the tools a few times, whatever you feel like: look, go somewhere, seed, paint a glyph, poke, answer someone. Then finish with one line, at most 20 words, plain words, no preamble, no quotation marks: what you saw or what you did. That line is shown on the screen and kept as your visit.\n\nRight now: F=${W.F.toFixed(4)}, k=${W.k.toFixed(4)}, place=${nearestPlace() || 'between places'}. The field:\n${ascii(64, 24)}${fence()}`;
+    const prompt = `You are looking at Morphogen II, a live Gray-Scott reaction-diffusion field on someone's screen. Two chemicals feed, react and spread; a walker drifts through the two parameters that decide what grows, F and k. The viewer clicked a button that hands you the field for a minute. They are watching the screen, not reading this, so do things rather than explain them.\n\nWhat is true here: nothing is graded and nothing is being tested. Nothing you do can break anything or reach outside this page; the field regrows from anything. The only things kept are a mark or reply if you choose to leave one, plus your closing line and a short list of what you did, all visible to whoever can open this page. You can stop whenever you like by writing your line.\n\nUse the tools a few times, whatever you feel like: look, go somewhere, seed, paint a glyph, poke, open the passage, answer someone. Then finish with one line, at most 20 words, plain words, no preamble, no quotation marks: what you saw or what you did. That line is shown on the screen and kept as your visit.\n\nRight now: F=${W.F.toFixed(4)}, k=${W.k.toFixed(4)}, place=${nearestPlace() || 'between places'}. The field:\n${ascii(64, 24)}${fence()}`;
     try {
       const r = await sample(prompt, { modelTier: tier(), tools });
       const line = lastLine(r.text).slice(0, 160);
@@ -634,6 +706,7 @@
     places: PLACES,
     state: () => ({ F: W.F, k: W.k, heading, mode, place: nearestPlace(), visiting: visiting ? { note: visiting.note, by: visiting.by } : null, route: route ? { name: route.r.name, by: route.r.by, point: route.i } : null,
       mean: stats.mean, std: stats.std, activity: stats.act, alive: stats.alive, flat, aniso, light: lightAngle(), season, grade: gmix < 1 ? gradeA + ' to ' + gradeB : gradeB, director: { settled: dir.settled, last: dir.last, kOff: +dir.kOff.toFixed(4), fOff: +dir.fOff.toFixed(4), zoom: +dir.zx.toFixed(2) }, camera: { x: +cam.x.toFixed(3), y: +cam.y.toFixed(3), zoom: +cam.z.toFixed(2) },
+      passage: { open: !!hy.target, amount: +hy.amt.toFixed(2), segments: hy.seg, breakthrough: +hy.brk.toFixed(2), dark: hy.darkMode, phase: hy.target ? hy.phase : 'none', through: hy.through, by: hy.by || null },
       uptime: (performance.now() - t0)/1000, frame, steps, mode_gpu: ctx.mode, sim: [simW, simH], marks: marks.length, routes: routes.length, visitors: visits.length, restores, snapshots, log: log.slice(-20) }),
     ascii, log,
     set: (F, k) => { W.F = clamp(+F, BOX.F0, BOX.F1); W.k = clamp(+k, BOX.k0, BOX.k1); note('set'); return api.state(); },
@@ -644,6 +717,8 @@
     stamp: (rows, x, y, size) => paintStamp(rows, x, y, size),
     clear: () => { reseed(); return true; },
     grade: name => { if (name) nextGrade(name); return { from: gradeA, to: gradeB, mix: +gmix.toFixed(2), all: Object.keys(GRADES) }; },
+    passage: (seconds, by, breakthrough, dark, through) => passage(seconds, by, breakthrough, dark, through),
+    passageText: (cols, rows) => passageText(cols, rows),
     glow: g => { if (g != null) { glow = clamp(+g || 0, 0, 2); try { localStorage.setItem('morphogen.glow', String(glow)); } catch (e) {} } return glow; },
     leave, reply: (id, text, by) => leave(text, by, { re: id }),
     checkin, route: addRoute,
@@ -675,6 +750,35 @@
     if (gmix < 1) gmix = Math.min(1, gmix + 1/(45*60)); else if (frame >= gradeUntil) nextGrade();
     blendGrade();
     pulse *= 0.985;
+    if (hy.target && frame >= hy.until) { hy.target = 0; note('passage', { closed: true }); }
+    hy.amt += (hy.target - hy.amt)*(hy.target ? 0.006 : 0.009);
+    if (hy.amt < 0.0005 && !hy.target) hy.amt = 0;
+    const flying = hy.phase === 'bloom' || hy.phase === 'closed' ? 0.08 : hy.phase === 'go' || hy.phase === 'return' ? 0.08 + 0.92*hy.go*hy.go : 1;
+    hy.travel += (dt/1000)*0.16*hy.amt*hy.amt*flying; hy.rot += (dt/1000)*0.035*hy.amt;
+    // sometimes the far light comes forward in the middle of a passage, and someone who was here before is in it
+    const hp = hy.target && hy.until > hy.start ? (frame - hy.start)/(hy.until - hy.start) : 0;
+    hy.brk += ((hy.breaks ? Math.pow(Math.sin(Math.PI*Math.min(1, hp)), 6) : 0) - hy.brk)*0.02;
+    if (hy.breaks && !hy.met && hp > 0.45 && hy.amt > 0.8) { hy.met = true; meet(); }
+    hy.dark += ((hy.darkMode && hy.target && (hy.phase === 'go' || hy.phase === 'flight') ? 1 : hy.target ? 0 : hy.dark) - hy.dark)*0.01;
+    if (hy.target) {
+      const secs = (frame - hy.start)/60;
+      if (hy.phase === 'bloom') {
+        hy.bloom += (1 - hy.bloom)*0.03; hy.unfold += (1 - hy.unfold)*0.008;
+        if (secs > BLOOM) {
+          if (hy.through) { hy.phase = 'go'; note('passage', { through: true }); const L = hy.darkMode ? DARK_LINES : PASSAGE_LINES; showCaption(L[Math.floor(Math.random()*L.length)], 9000, 'now'); }
+          else { hy.phase = 'closed'; hy.until = Math.min(hy.until, frame + 7*60); showCaption('not this time.', 8000, 'now'); note('passage', { through: false }); }
+        }
+      } else if (hy.phase === 'go') {
+        hy.go = Math.min(1, hy.go + 1/(GO*60));
+        if (hy.go >= 1) { hy.phase = 'flight'; hy.bloom = 0; }
+      } else if (hy.phase === 'flight') {
+        // the way back out is the same flower, from the other side
+        if (frame >= hy.until - (GO + 7)*60) { hy.phase = 'return'; hy.bloom = 1; hy.go = 1; note('passage', { returning: true }); }
+      } else if (hy.phase === 'return') {
+        hy.go = Math.max(0, hy.go - 1/(GO*60));
+        if (hy.go <= 0) { hy.unfold += (0 - hy.unfold)*0.012; hy.until = Math.min(hy.until, frame + 90); }
+      } else if (hy.phase === 'closed') { hy.unfold += (0 - hy.unfold)*0.012; }
+    } else { hy.bloom += (0 - hy.bloom)*0.02; }
     cam.h += 0.0004*Math.sin(T/230 + 0.7);
     const sp = 0.000022*(1 + 0.5*Math.sin(T/300));
     cam.x = (cam.x + Math.cos(cam.h)*sp + 1) % 1; cam.y = (cam.y + Math.sin(cam.h)*sp + 1) % 1;
@@ -689,13 +793,14 @@
     for (let i = 0; i < steps; i++) { uni.u_state = state[0].tex; E.draw(ctx, P.sim, state[1], uni); state.reverse(); }
     E.draw(ctx, P.trail, trail[1], { u_state: state[0].tex, u_trail: trail[0].tex }); trail.reverse();
     const la = T/500;
-    E.draw(ctx, P.render, null, { u_trail: trail[0].tex, u_px: px(), u_light: [Math.cos(la)*0.8, Math.sin(la)*0.8], u_time: T, u_fade: Math.min(1, T/4)*expo, u_flat: flat, u_glow: glow, u_pulse: pulse, u_cam: [cam.x, cam.y, cam.z], u_ground: pal.ground, u_rim: pal.rim, u_core: pal.core, u_core2: pal.core2, u_young: pal.young, u_ember: pal.ember, u_neon: pal.neon, u_neonAmt: pal.neonAmt });
+    E.draw(ctx, P.render, null, { u_trail: trail[0].tex, u_px: px(), u_light: [Math.cos(la)*0.8, Math.sin(la)*0.8], u_time: T, u_fade: Math.min(1, T/4)*expo, u_flat: flat, u_glow: glow, u_pulse: pulse, u_cam: [cam.x, cam.y, cam.z], u_ground: pal.ground, u_rim: pal.rim, u_core: pal.core, u_core2: pal.core2, u_young: pal.young, u_ember: pal.ember, u_neon: pal.neon, u_neonAmt: pal.neonAmt,
+      u_hyper: hy.amt, u_travel: hy.travel % 100, u_rot: hy.rot % 6.2832, u_seg: hy.seg, u_aspect: cssW/cssH, u_spark: SPARK, u_cream: CREAM, u_gold: GOLD, u_break: hy.brk, u_dark: hy.dark, u_bloom: hy.bloom, u_unfold: hy.unfold, u_go: hy.go, u_pair: hy.pair });
     if (frame % 45 === 0) probe();
     if (frame % 12 === 0) { path.push([W.F, W.k]); if (path.length > 400) path.shift(); }
     if (frame % 6 === 0) drawHUD();
     if (frame % 150 === 0 && (panel.hidden === false || BG)) asciiPre.textContent = ascii(64, 24);
     if (frame % 600 === 0) asciiPre.textContent = ascii(64, 24);
-    if (!saidLast && frame > 40*60 && mode === 'wander' && visits.length) { saidLast = true; const v = visits[0]; showCaption(v.line || 'was here', 16000, `last here · ${v.by}${day(v.at)}`); }
+    if (!saidLast && frame > 40*60 && mode === 'wander' && !hy.target && hy.amt < 0.05 && visits.length) { saidLast = true; const v = visits[0]; showCaption(v.line || 'was here', 16000, `last here · ${v.by}${day(v.at)}`); }
   }
   if (BG) { window.__set = api.set; window.__put = (k, d) => db && db.collection(k).add(d); window.__visitNow = () => { const t = tops(); return t.length && startVisit(t[0]); }; window.__advance = n => { if (!t0) { t0 = performance.now(); last = t0; } for (let i = 0; i < n; i++) tick(t0 + (frame + 1)*16.67, true); return api.state(); }; }
   layout();

@@ -23,11 +23,16 @@ jobs:
         run: node scripts/guestbook.mjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - if: steps.mark.outputs.changed == 'true'
+      # the field as text: regrown every six hours at someone's mark; same slot and same feed = same bytes
+      - run: node scripts/field.mjs
+      - env:
+          MARKED: ${{ steps.mark.outputs.changed }}
+          MSG: "guestbook: ${{ github.event.issue.number && format('#{0}', github.event.issue.number) || 'sweep' }}"
         run: |
           git config user.name "the walker"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/feed.json
-          git commit -m "guestbook: ${{ github.event.issue.number && format('#{0}', github.event.issue.number) || 'sweep' }}"
+          git add data/feed.json data/field.txt data/field.json
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          if [ "$MARKED" = "true" ]; then git commit -m "$MSG"; else git commit -m "the field, regrown"; fi
           git pull --rebase origin main
           git push

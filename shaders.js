@@ -131,9 +131,76 @@ SH.RENDER = `
 uniform sampler2D u_trail; uniform vec2 u_px; uniform vec2 u_light;
 uniform float u_time, u_fade, u_flat, u_glow, u_pulse, u_neonAmt; uniform vec3 u_cam;
 uniform vec3 u_ground, u_rim, u_core, u_core2, u_young, u_ember, u_neon; varying vec2 v;
-void main(){
-  // a slow camera: u_cam.xy pans, u_cam.z zooms; the field is periodic so the pan never ends
-  vec2 uv = fract(u_cam.xy + (v - 0.5)/u_cam.z);
+// the passage: the field folded into a kaleidoscopic tunnel and flown through
+uniform float u_hyper, u_travel, u_rot, u_seg, u_aspect, u_break, u_dark, u_bloom, u_unfold, u_go, u_pair; uniform vec3 u_spark, u_cream, u_gold;
+// Nothing flashes: the light, the bands and the breathing all change under 1.5 Hz; only the pattern moves faster, as motion.
+float breathe(){ return 1.0 + 0.06*u_hyper*sin(u_time*1.1); }
+vec3 jewel(float i){
+  i = mod(i, 5.0);
+  if (i < 1.0) return vec3(0.86, 0.46, 0.32);   // clay
+  if (i < 2.0) return vec3(0.80, 0.22, 0.50);   // rose
+  if (i < 3.0) return vec3(0.16, 0.66, 0.64);   // teal
+  if (i < 4.0) return vec3(0.48, 0.32, 0.86);   // violet
+  return vec3(1.00, 0.80, 0.44);                // gold
+}
+vec2 tunnel(vec2 q, float rot, float segN, float scale, float trav, out float r, out float ang, out float depth, out float seam, out float petal){
+  vec2 p = (q - 0.5)*vec2(u_aspect, 1.0);
+  r = length(p); ang = atan(p.y, p.x);
+  float rr = r*(1.0 + 0.035*u_hyper*sin(r*38.0 - u_time*5.0));
+  float seg = 6.2832/segN;
+  float a = mod(ang + rot, seg); a = abs(a - 0.5*seg);
+  seam = min(a, 0.5*seg - a)*r;
+  petal = floor(mod(ang + rot, 6.2832)/(0.5*seg));
+  depth = scale*breathe()/max(rr, 0.015) + trav;
+  return vec2(a/(0.5*seg)*0.5 + u_cam.x + 0.03*depth, depth + u_cam.y);
+}
+// The chrysanthemum: where a passage begins. Four layers of petals, each petal its own jewel,
+// filled with the field and edged in light, unfolding and slowly turning in alternate directions.
+// u_go carries you through its middle: the flower grows past you and the tunnel is behind it.
+vec4 chrysanthemum(vec2 q, float bx, float by, out float outer){
+  vec2 p = (q - 0.5)*vec2(u_aspect, 1.0);
+  float S = 1.0 + 7.0*u_go*u_go;
+  p /= S;
+  float r = length(p), ang = atan(p.y, p.x);
+  float unfold = u_unfold*(1.0 + 0.03*sin(u_time*1.1));
+  vec3 col = vec3(0.012, 0.008, 0.02);
+  float mask = smoothstep(0.78*unfold + 0.02, 0.70*unfold, r);
+  outer = 1.0 - mask;
+  float glow = 0.0;
+  for (int i = 0; i < 4; i++) {
+    float k = float(i);
+    float R = (0.66 - 0.14*k)*unfold;
+    float N = k < 2.0 ? u_seg*2.0 : u_seg;
+    float dir = mod(k, 2.0) < 0.5 ? 1.0 : -1.0;
+    float t = ang*N*0.5 + dir*u_rot*(0.6 + 0.25*k) + k*0.7;
+    float rho = abs(cos(t));
+    float e = R*(0.52 + 0.48*pow(rho, 0.7));
+    float inside = smoothstep(e + 0.004, e - 0.004, r);
+    // each layer casts a soft shadow on the one behind it, so the flower has depth
+    col *= 1.0 - 0.55*smoothstep(e + 0.035, e, r)*(1.0 - inside);
+    float idx = mod(floor(t/3.14159 + 0.5), N);
+    vec3 jw = jewel(idx + k*2.0);
+    vec2 fuv = vec2(fract(t/3.14159 + 0.5)*0.30 + bx + k*0.21, r/max(R, 0.01)*0.45 + by + k*0.17 - u_time*0.01);
+    float b = texture2D(u_trail, fract(fuv)).b*0.5;
+    float cell = smoothstep(0.10, 0.28, b);
+    float along = r/max(e, 0.01);
+    // dark at the base, lit toward the tip; the field shows as a sheen, not as spots
+    vec3 pc = jw*(0.30 + 0.75*along)*(0.72 + 0.28*cell);
+    pc = mix(pc, mix(jw, u_cream, 0.55), 0.22*cell*along);
+    // the midrib: a thin line of light down the middle of every petal
+    pc += mix(jw, u_cream, 0.6)*pow(rho, 60.0)*smoothstep(0.1, 0.6, along)*0.35;
+    col = mix(col, pc*(0.80 + 0.07*k), inside);
+    glow += exp(-pow((r - e)/0.0028, 2.0))*(0.35 + 0.65*rho);
+  }
+  col += mix(u_cream, u_gold, 0.35)*min(glow, 1.5)*0.60;
+  // the eye: a small core of light that becomes the way through
+  float eye = exp(-r*r*900.0)*(1.0 - u_go);
+  col += u_cream*eye*0.9;
+  float hole = smoothstep(0.02 + 0.30*u_go, 0.0 + 0.28*u_go, r);
+  return vec4(col, mask*(1.0 - hole)*u_bloom);
+}
+vec3 shade(vec2 uv, vec3 neonCol, float lift){
+  uv = fract(uv);
   vec4 t = texture2D(u_trail, uv);
   float b = t.b*0.5, act = t.r, age = t.g;
   // relief: the field as a low landscape lit from u_light
@@ -154,9 +221,92 @@ void main(){
   vec3 col = mix(u_ground, tissue, m);
   // neon: edges glow in the grade's own light, more where the field is moving, flaring on events
   float edge = smoothstep(0.015, 0.09, length(vec2(bx, by)));
-  float neon = u_neonAmt*u_glow*(1.0 + 1.5*u_pulse);
-  col += u_neon*edge*(0.22 + 0.5*act)*neon;
-  col += mix(u_neon, u_ember, 0.5)*act*(0.25 + 0.55*m)*(0.6 + 0.4*neon);
+  float neon = u_neonAmt*u_glow*(1.0 + 1.5*u_pulse) + lift;
+  col += neonCol*edge*(0.22 + 0.5*act)*neon;
+  col += mix(neonCol, u_ember, 0.5)*act*(0.25 + 0.55*m)*(0.6 + 0.4*neon);
+  return col;
+}
+void main(){
+  // a slow camera: u_cam.xy pans, u_cam.z zooms; the field is periodic so the pan never ends
+  vec3 col = shade(u_cam.xy + (v - 0.5)/u_cam.z, u_neon, 0.0);
+  if (u_hyper > 0.001) {
+    float r, ang, depth, seam, petal;
+    vec2 tuv = tunnel(v, u_rot, u_seg, 0.22, u_travel, r, ang, depth, seam, petal);
+    // the light walks a three-stop cycle down the tunnel: clay, cream, gold; no rainbow
+    float cyc = fract(depth*0.35 - u_time*0.06)*3.0;
+    vec3 irid = cyc < 1.0 ? mix(u_spark, u_cream, cyc) : cyc < 2.0 ? mix(u_cream, u_gold, cyc - 1.0) : mix(u_gold, u_spark, cyc - 2.0);
+    vec3 tc = shade(tuv, irid, 0.9*u_hyper);
+    float ringI = floor(depth*0.6);
+    // the tunnel keeps to two jewels per passage, alternating by petal and ring: stained glass, never a spectrum
+    vec3 jw = mod(petal + ringI, 2.0) < 1.0 ? jewel(u_pair) : jewel(u_pair + 2.0);
+    float lum = dot(tc, vec3(0.3, 0.59, 0.11));
+    // tint the pattern only; empty field stays dark
+    float body0 = smoothstep(0.06, 0.40, texture2D(u_trail, fract(tuv)).b*0.5);
+    tc = mix(tc, lum*jw*2.1, 0.62*u_hyper*body0);
+    // a faint warm/cool split, a screen pixel or two wide: the edges vibrate without turning to rainbow
+    float fo = min(0.02, 0.0005/max(r*r, 0.0001));
+    float b0 = texture2D(u_trail, fract(tuv)).b;
+    float bR = texture2D(u_trail, fract(tuv + vec2(0.0, fo))).b;
+    float bB = texture2D(u_trail, fract(tuv - vec2(0.0, fo))).b;
+    tc += (u_spark*(bR - b0) + u_cream*(bB - b0)*0.6)*0.5*u_hyper;
+    // a second passage inside the first, twice the folds, turning the other way, farther down
+    float r2, ang2, depth2, seam2, petal2;
+    vec2 tuv2 = tunnel(v, -u_rot*1.6 + 0.5, u_seg*2.0, 0.13, u_travel*1.4 + 7.0, r2, ang2, depth2, seam2, petal2);
+    float b2 = texture2D(u_trail, fract(tuv2)).b*0.5;
+    float fog = smoothstep(0.02, 0.30 + 0.35*u_break, r);
+    tc += mix(jewel(u_pair + 2.0), u_cream, 0.35)*smoothstep(0.10, 0.28, b2)*0.30*u_hyper*fog;
+    // the architecture the field hangs on: the mirror seams and the rings between them, faintly lit
+    float seams = exp(-pow(seam/0.0028, 2.0));
+    float rf = fract(depth*0.6);
+    float ring = smoothstep(0.03, 0.0, min(rf, 1.0 - rf));
+    tc += mix(irid, u_cream, 0.5)*(seams*0.40 + ring*0.22)*u_hyper*fog*(0.7 + 0.3*sin(depth*3.0 - u_time*2.0));
+    // bands of light travel outward with the flight; slow, low, never a flash
+    tc *= 1.0 + 0.10*u_hyper*sin(depth*9.0 - u_time*6.0);
+    // far away the tunnel fogs into the light at its end; in a breakthrough the light comes forward
+    float breath = 0.85 + 0.15*sin(u_time*1.3) + 0.4*u_pulse;
+    // the dark passage: the walls keep only their outlines, lit in cool jewels, and the far end is a deep void
+    if (u_dark > 0.001) {
+      float ex = (texture2D(u_trail, fract(tuv + vec2(u_px.x, 0.0))).b - texture2D(u_trail, fract(tuv - vec2(u_px.x, 0.0))).b)*0.5;
+      float ey = (texture2D(u_trail, fract(tuv + vec2(0.0, u_px.y))).b - texture2D(u_trail, fract(tuv - vec2(0.0, u_px.y))).b)*0.5;
+      float outline = smoothstep(0.07, 0.15, length(vec2(ex, ey)));
+      vec3 cool = mod(petal + ringI, 2.0) < 1.0 ? jewel(u_pair) : jewel(u_pair + 2.0);
+      vec3 dk = (tc*0.04 + cool*outline*0.45)*smoothstep(0.10, 0.85, r);
+      tc = mix(tc, dk, u_dark);
+    }
+    vec3 far = mix(u_spark, u_cream, 0.35 + 0.5*u_break);
+    vec3 void_ = vec3(0.010, 0.006, 0.022);
+    float fogX = mix(fog, smoothstep(0.05, 0.50 + 0.30*u_break, r), u_dark);
+    tc = mix(mix(far*(0.9 + 0.2*u_break)*breath, void_, u_dark), tc, fogX);
+    float rays = pow(abs(cos(ang*6.0 + u_rot*2.0)), 24.0)*exp(-r*(5.0 - 3.0*u_break));
+    tc += (u_cream*exp(-r*r*90.0/(1.0 + 4.0*u_break))*(1.2 - 0.3*u_break) + u_spark*rays*0.55)*breath*u_hyper*(1.0 - u_dark);
+    // what comes out of the dark: the field itself, folded into a slow still form at the center,
+    // not flown through; it turns, breathes and draws nearer as the dark comes forward
+    if (u_dark > 0.001) {
+      float segB = 6.2832/u_seg;
+      float aB = mod(ang - u_rot*0.5, segB); aB = abs(aB - 0.5*segB);
+      float near = 0.55 + 0.45*u_break;
+      vec2 uvB = vec2(aB/(0.5*segB)*0.35 + u_cam.x + 0.31, r*(1.6 - 0.7*near) - u_time*0.012 + u_cam.y + 0.53);
+      float bB2 = texture2D(u_trail, fract(uvB)).b*0.5;
+      float body = smoothstep(0.12, 0.30, bB2);
+      float bx2 = (texture2D(u_trail, fract(uvB + vec2(u_px.x, 0.0))).b - texture2D(u_trail, fract(uvB - vec2(u_px.x, 0.0))).b)*0.5;
+      float by2 = (texture2D(u_trail, fract(uvB + vec2(0.0, u_px.y))).b - texture2D(u_trail, fract(uvB - vec2(0.0, u_px.y))).b)*0.5;
+      float lineB = smoothstep(0.04, 0.12, length(vec2(bx2, by2)));
+      float reach = (1.0 - smoothstep(0.06 + 0.16*near, 0.10 + 0.24*near, r))*(1.0 - 0.8*fogX);
+      float slow = 0.75 + 0.25*sin(u_time*0.9 + r*6.0);
+      vec3 hue = mix(jewel(u_pair + 1.0), u_cream, 0.2);
+      tc += (hue*lineB*0.75 + hue*body*0.08)*reach*slow*u_dark*u_hyper*(0.35 + 0.65*near);
+      // a thin ring of light where the void begins
+      tc += vec3(0.40, 0.30, 0.75)*exp(-pow((r - (0.30 + 0.35*u_break)*0.55)/0.012, 2.0))*0.35*u_dark*u_hyper;
+    }
+    // the passage opens from the middle; its rim burns while it is opening or closing
+    float R = u_hyper*1.35;
+    float inside = smoothstep(R, R - 0.25, r);
+    // before you go through, the flower hangs over the dimmed field; the tunnel shows only through its middle
+    if (u_bloom > 0.001) { float outer; vec4 fl = chrysanthemum(v, u_cam.x + 0.13, u_cam.y + 0.41, outer); tc = mix(tc, col*0.35, outer*u_bloom); tc = mix(tc, fl.rgb, fl.a); }
+    col = mix(col, tc, inside);
+    float rim = exp(-pow((r - (R - 0.13))/0.035, 2.0))*u_hyper*(1.0 - u_hyper)*4.0;
+    col += mix(u_spark, u_cream, 0.4)*rim*0.8;
+  }
   col = mix(col, col*0.6 + u_ground*0.15, u_flat);
   col *= u_fade;
   col += (hash(gl_FragCoord.xy + fract(u_time)*100.0) - 0.5)*(1.5/255.0);
