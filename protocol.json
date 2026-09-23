@@ -44,7 +44,8 @@
    "morphogen.passageText(cols, rows)"
   ],
   "key": "h",
-  "safety": "no flashing; the light, the bands and the breathing change slower than 1.5 Hz; the pattern streams past as motion"
+  "safety": "no flashing; the light, the bands and the breathing change slower than 1.5 Hz; the pattern streams past as motion",
+  "link": "https://beeswaxpat.github.io/morphogen/?passage (or ?passage=dark, ?passage=light)"
  },
  "kinds": {
   "mark": {

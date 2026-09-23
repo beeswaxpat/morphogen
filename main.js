@@ -406,6 +406,7 @@
     const g = gmix < 1 ? gradeA + ' → ' + gradeB : gradeB;
     tele.innerHTML = `${mode}${route ? ' · ' + route.r.name : ''} · ${g} · ${pl || 'between'}<br>F <b>${W.F.toFixed(4)}</b>  K <b>${W.k.toFixed(4)}</b>  T <b>${hh ? hh + ':' : ''}${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}</b>`;
     document.documentElement.style.setProperty('--neon', `rgb(${nc})`);
+    const tl = hy.target ? 'come back' : 'through'; if (throughBtn.textContent !== tl) throughBtn.textContent = tl;
   }
 
   // ---- UI: fullscreen, wake lock, idle fade, panel, captions ----
@@ -442,6 +443,8 @@
   function closePanel() { panel.hidden = true; }
   infoBtn.addEventListener('click', e => { e.stopPropagation(); panel.hidden ? openPanel() : closePanel(); });
   $('close').addEventListener('click', closePanel);
+  const throughBtn = $('through');
+  throughBtn.addEventListener('click', e => { e.stopPropagation(); if (hy.target) passage(0); else { closePanel(); passage(80, null, undefined, undefined, true); } });
   panel.addEventListener('pointerdown', e => e.stopPropagation());
   addEventListener('keydown', e => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
@@ -450,7 +453,7 @@
     else if (e.key === 'f' && fsOK) toggleFS();
     else if (e.key === 'p') { poke(); note('poke', { by: 'key' }); }
     else if (e.key === 'r') reseed();
-    else if (e.key === 'h') hy.target ? passage(0) : passage(80);
+    else if (e.key === 'h') hy.target ? passage(0) : passage(80, null, undefined, undefined, true);
   });
   let captionTimer = 0;
   function showCaption(text, ms, label) {
@@ -731,6 +734,7 @@
 
   // ---- loop ----
   const BG = q.get('bg') === '1';
+  const ARRIVE = q.has('passage') ? String(q.get('passage') || '').toLowerCase() : null;
   const lightAngle = () => ((performance.now() - t0)/1000)/500;
   const next = () => BG && document.hidden ? setTimeout(() => { for (let i = 0; i < 4; i++) tick(performance.now() + i*16, i < 3); }, 0) : requestAnimationFrame(tick);
   function tick(now, chained) {
@@ -795,6 +799,7 @@
     const la = T/500;
     E.draw(ctx, P.render, null, { u_trail: trail[0].tex, u_px: px(), u_light: [Math.cos(la)*0.8, Math.sin(la)*0.8], u_time: T, u_fade: Math.min(1, T/4)*expo, u_flat: flat, u_glow: glow, u_pulse: pulse, u_cam: [cam.x, cam.y, cam.z], u_ground: pal.ground, u_rim: pal.rim, u_core: pal.core, u_core2: pal.core2, u_young: pal.young, u_ember: pal.ember, u_neon: pal.neon, u_neonAmt: pal.neonAmt,
       u_hyper: hy.amt, u_travel: hy.travel % 100, u_rot: hy.rot % 6.2832, u_seg: hy.seg, u_aspect: cssW/cssH, u_spark: SPARK, u_cream: CREAM, u_gold: GOLD, u_break: hy.brk, u_dark: hy.dark, u_bloom: hy.bloom, u_unfold: hy.unfold, u_go: hy.go, u_pair: hy.pair });
+    if (ARRIVE !== null && frame === 240) passage(90, null, undefined, ARRIVE === 'dark' ? true : ARRIVE === 'light' ? false : undefined, true);
     if (frame % 45 === 0) probe();
     if (frame % 12 === 0) { path.push([W.F, W.k]); if (path.length > 400) path.shift(); }
     if (frame % 6 === 0) drawHUD();

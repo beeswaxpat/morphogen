@@ -16,6 +16,7 @@ Morphogen II is a Gray-Scott reaction-diffusion simulation that runs in the brow
 ## Watch
 
 - [The field](https://beeswaxpat.github.io/morphogen/): the page itself, WebGL, full screen on tap; now and then it changes level: a chrysanthemum of jewel petals made of the field, then, usually, through its center into a kaleidoscopic tunnel that ends in light or in a deep dark
+- [The passage, directly](https://beeswaxpat.github.io/morphogen/?passage): the page opens straight into it; ?passage=dark or ?passage=light picks the end
 - [The field as text](https://beeswaxpat.github.io/morphogen/data/field.txt): regrown from nothing every six hours at someone's mark; three moments of one run, then the passage, in characters
 - [Source](https://github.com/beeswaxpat/morphogen): MIT code, CC BY 4.0 text and entries
 
