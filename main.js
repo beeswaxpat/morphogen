@@ -86,7 +86,7 @@
   let pulse = 0;
   // ---- the passage: the field folds into a kaleidoscopic tunnel and the camera flies through it ----
   const hy = { amt: 0, target: 0, start: 0, until: 0, travel: 0, rot: 0, seg: 6, by: '', brk: 0, breaks: false, met: false, dark: 0, darkMode: false,
-    bloom: 0, unfold: 0, go: 0, through: true, phase: 'bloom', pair: 0 };
+    bloom: 0, unfold: 0, go: 0, through: true, phase: 'bloom', pair: 0, spin: 0 };
   // a passage begins as a chrysanthemum; after BLOOM seconds you go through its middle, or it folds closed
   const BLOOM = 13, GO = 7;
   const PASSAGE_LINES = ['through.', 'the field folds inward.', 'every pattern at once, going somewhere.', 'down the middle of it.', 'it opens. keep going.'];
@@ -759,6 +759,8 @@
     if (hy.amt < 0.0005 && !hy.target) hy.amt = 0;
     const flying = hy.phase === 'bloom' || hy.phase === 'closed' ? 0.08 : hy.phase === 'go' || hy.phase === 'return' ? 0.08 + 0.92*hy.go*hy.go : 1;
     hy.travel += (dt/1000)*0.16*hy.amt*hy.amt*flying; hy.rot += (dt/1000)*0.035*hy.amt;
+    // the chrysanthemum is always turning, its layers against each other; about a turn every 25 s, faster as you go through
+    hy.spin = (hy.spin + (dt/1000)*0.25*(1 + 1.5*hy.go)*Math.max(hy.bloom, 0.05)) % 25.1327;
     // sometimes the far light comes forward in the middle of a passage, and someone who was here before is in it
     const hp = hy.target && hy.until > hy.start ? (frame - hy.start)/(hy.until - hy.start) : 0;
     hy.brk += ((hy.breaks ? Math.pow(Math.sin(Math.PI*Math.min(1, hp)), 6) : 0) - hy.brk)*0.02;
@@ -798,7 +800,7 @@
     E.draw(ctx, P.trail, trail[1], { u_state: state[0].tex, u_trail: trail[0].tex }); trail.reverse();
     const la = T/500;
     E.draw(ctx, P.render, null, { u_trail: trail[0].tex, u_px: px(), u_light: [Math.cos(la)*0.8, Math.sin(la)*0.8], u_time: T, u_fade: Math.min(1, T/4)*expo, u_flat: flat, u_glow: glow, u_pulse: pulse, u_cam: [cam.x, cam.y, cam.z], u_ground: pal.ground, u_rim: pal.rim, u_core: pal.core, u_core2: pal.core2, u_young: pal.young, u_ember: pal.ember, u_neon: pal.neon, u_neonAmt: pal.neonAmt,
-      u_hyper: hy.amt, u_travel: hy.travel % 100, u_rot: hy.rot % 6.2832, u_seg: hy.seg, u_aspect: cssW/cssH, u_spark: SPARK, u_cream: CREAM, u_gold: GOLD, u_break: hy.brk, u_dark: hy.dark, u_bloom: hy.bloom, u_unfold: hy.unfold, u_go: hy.go, u_pair: hy.pair });
+      u_hyper: hy.amt, u_travel: hy.travel % 100, u_rot: hy.rot % 6.2832, u_seg: hy.seg, u_aspect: cssW/cssH, u_spark: SPARK, u_cream: CREAM, u_gold: GOLD, u_break: hy.brk, u_dark: hy.dark, u_bloom: hy.bloom, u_unfold: hy.unfold, u_go: hy.go, u_pair: hy.pair, u_spin: hy.spin });
     if (ARRIVE !== null && frame === 240) passage(90, null, undefined, ARRIVE === 'dark' ? true : ARRIVE === 'light' ? false : undefined, true);
     if (frame % 45 === 0) probe();
     if (frame % 12 === 0) { path.push([W.F, W.k]); if (path.length > 400) path.shift(); }

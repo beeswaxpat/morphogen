@@ -132,7 +132,7 @@ uniform sampler2D u_trail; uniform vec2 u_px; uniform vec2 u_light;
 uniform float u_time, u_fade, u_flat, u_glow, u_pulse, u_neonAmt; uniform vec3 u_cam;
 uniform vec3 u_ground, u_rim, u_core, u_core2, u_young, u_ember, u_neon; varying vec2 v;
 // the passage: the field folded into a kaleidoscopic tunnel and flown through
-uniform float u_hyper, u_travel, u_rot, u_seg, u_aspect, u_break, u_dark, u_bloom, u_unfold, u_go, u_pair; uniform vec3 u_spark, u_cream, u_gold;
+uniform float u_hyper, u_travel, u_rot, u_seg, u_aspect, u_break, u_dark, u_bloom, u_unfold, u_go, u_pair, u_spin; uniform vec3 u_spark, u_cream, u_gold;
 // Nothing flashes: the light, the bands and the breathing all change under 1.5 Hz; only the pattern moves faster, as motion.
 float breathe(){ return 1.0 + 0.06*u_hyper*sin(u_time*1.1); }
 vec3 jewel(float i){
@@ -172,7 +172,7 @@ vec4 chrysanthemum(vec2 q, float bx, float by, out float outer){
     float R = (0.66 - 0.14*k)*unfold;
     float N = k < 2.0 ? u_seg*2.0 : u_seg;
     float dir = mod(k, 2.0) < 0.5 ? 1.0 : -1.0;
-    float t = ang*N*0.5 + dir*u_rot*(0.6 + 0.25*k) + k*0.7;
+    float t = (ang + dir*u_spin*(1.0 - 0.25*k))*N*0.5 + k*0.7;   // speeds 1, 3/4, 1/2, 1/4: seamless when spin wraps at 8 pi
     float rho = abs(cos(t));
     float e = R*(0.52 + 0.48*pow(rho, 0.7));
     float inside = smoothstep(e + 0.004, e - 0.004, r);
@@ -189,6 +189,9 @@ vec4 chrysanthemum(vec2 q, float bx, float by, out float outer){
     pc = mix(pc, mix(jw, u_cream, 0.55), 0.22*cell*along);
     // the midrib: a thin line of light down the middle of every petal
     pc += mix(jw, u_cream, 0.6)*pow(rho, 60.0)*smoothstep(0.1, 0.6, along)*0.35;
+    // each petal is cupped: darker toward its sides, with a fine lit edge where it meets its neighbour
+    pc *= 0.42 + 0.58*smoothstep(0.0, 0.30, rho);
+    pc += mix(jw, u_cream, 0.5)*(1.0 - smoothstep(0.0, 0.035, rho))*smoothstep(0.05, 0.3, along)*0.35;
     col = mix(col, pc*(0.80 + 0.07*k), inside);
     glow += exp(-pow((r - e)/0.0028, 2.0))*(0.35 + 0.65*rho);
   }
