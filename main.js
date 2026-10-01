@@ -429,7 +429,8 @@
   function touched() { document.body.classList.remove('idle'); clearTimeout(idleTimer); idleTimer = setTimeout(() => document.body.classList.add('idle'), 5000); }
   addEventListener('pointermove', touched); addEventListener('pointerdown', touched); addEventListener('keydown', touched); touched();
   let firstTap = true;
-  function setPaint(e) { const u = toUV(e.clientX/cssW, 1 - e.clientY/cssH); paint[0] = u[0]; paint[1] = u[1]; paint[3] = 0.06; }
+  let lastSeed = 0;
+  function setPaint(e) { const u = toUV(e.clientX/cssW, 1 - e.clientY/cssH); paint[0] = u[0]; paint[1] = u[1]; paint[3] = 0.06; lastSeed = performance.now(); }
   canvas.addEventListener('pointerdown', e => {
     if (firstTap) { firstTap = false; if (fsOK) enterFS(); wake(); hint.classList.add('gone'); }
     pointerDown = true; setPaint(e); e.preventDefault();
@@ -735,6 +736,10 @@
   // ---- loop ----
   const BG = q.get('bg') === '1';
   const ARRIVE = q.has('passage') ? String(q.get('passage') || '').toLowerCase() : null;
+  // about one visit in three blasts off on its own 10 s in: always through the flower, after a lull in tapping,
+  // never with the panel open, never when the device asks for reduced motion. ?auto=1 forces it, ?auto=0 turns it off.
+  const calm = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
+  let AUTO = q.get('auto') === '1' ? 10 : q.get('auto') === '0' || ARRIVE !== null || calm ? -1 : Math.random() < 1/3 ? 10 : -1;
   const lightAngle = () => ((performance.now() - t0)/1000)/500;
   const next = () => BG && document.hidden ? setTimeout(() => { for (let i = 0; i < 4; i++) tick(performance.now() + i*16, i < 3); }, 0) : requestAnimationFrame(tick);
   function tick(now, chained) {
@@ -802,6 +807,10 @@
     E.draw(ctx, P.render, null, { u_trail: trail[0].tex, u_px: px(), u_light: [Math.cos(la)*0.8, Math.sin(la)*0.8], u_time: T, u_fade: Math.min(1, T/4)*expo, u_flat: flat, u_glow: glow, u_pulse: pulse, u_cam: [cam.x, cam.y, cam.z], u_ground: pal.ground, u_rim: pal.rim, u_core: pal.core, u_core2: pal.core2, u_young: pal.young, u_ember: pal.ember, u_neon: pal.neon, u_neonAmt: pal.neonAmt,
       u_hyper: hy.amt, u_travel: hy.travel % 100, u_rot: hy.rot % 6.2832, u_seg: hy.seg, u_aspect: cssW/cssH, u_spark: SPARK, u_cream: CREAM, u_gold: GOLD, u_break: hy.brk, u_dark: hy.dark, u_bloom: hy.bloom, u_unfold: hy.unfold, u_go: hy.go, u_pair: hy.pair, u_spin: hy.spin });
     if (ARRIVE !== null && frame === 240) passage(90, null, undefined, ARRIVE === 'dark' ? true : ARRIVE === 'light' ? false : undefined, true);
+    if (AUTO > 0 && T >= AUTO && panel.hidden && !pointerDown && performance.now() - lastSeed > 2000) {
+      AUTO = -1;
+      if (!hy.target) { passage(80, null, undefined, undefined, true); note('passage', { auto: true }); }
+    }
     if (frame % 45 === 0) probe();
     if (frame % 12 === 0) { path.push([W.F, W.k]); if (path.length > 400) path.shift(); }
     if (frame % 6 === 0) drawHUD();
