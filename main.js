@@ -94,10 +94,10 @@
   const FLOWER_LINES = ['it unfolds.', 'petals, and petals under them.', 'a flower made of the field.', 'it opens slowly.'];
   function passage(seconds, by, breakthrough, dark, through) {
     const s = seconds == null ? 75 : +seconds;
-    if (!(s > 0)) { hy.until = frame; note('passage', { end: true }); return { ok: true, open: false }; }
+    if (!(s > 0)) { comeBack(); return { ok: true, open: false, leaving: true }; }
     const fresh = hy.target === 0;
     hy.target = 1; hy.until = frame + Math.min(600, s)*60; hy.by = by || '';
-    if (fresh) { hy.seg = [5, 6, 8][Math.floor(Math.random()*3)]; hy.rot = Math.random()*6.2832; hy.start = frame; hy.breaks = Math.random() < 0.6; hy.met = false; hy.darkMode = Math.random() < 0.4; hy.through = Math.random() < 0.75; hy.phase = 'bloom'; hy.unfold = 0; hy.go = 0; hy.pair = Math.floor(Math.random()*5); }
+    if (fresh) { hy.seg = [5, 6, 8][Math.floor(Math.random()*3)]; hy.rot = Math.random()*6.2832; hy.start = frame; hy.breaks = Math.random() < 0.6; hy.met = false; hy.darkMode = Math.random() < 0.4; hy.through = Math.random() < 0.75; hy.phase = 'bloom'; hy.unfold = 0; hy.go = 0; hy.pair = Math.floor(Math.random()*5); hy.leaving = false; }
     if (breakthrough != null) hy.breaks = !!breakthrough;
     if (dark != null) hy.darkMode = !!dark;
     if (through != null) hy.through = !!through;
@@ -107,6 +107,15 @@
     if (fresh) showCaption(FLOWER_LINES[Math.floor(Math.random()*FLOWER_LINES.length)], 9000, by ? by + ', now' : 'now');
     note('passage', { seconds: s, by: by || undefined, segments: hy.seg, dark: hy.darkMode });
     return { ok: true, open: true, seconds: s, segments: hy.seg, dark: hy.darkMode, breakthrough: hy.breaks };
+  }
+  // leaving early: back out the way you came. In the tunnel you return through the flower; before it the flower folds.
+  function comeBack() {
+    if (!hy.target || hy.leaving) return;
+    hy.leaving = true; hy.breaks = false;
+    if (hy.phase === 'bloom' || hy.phase === 'closed') { hy.phase = 'closed'; hy.until = Math.min(hy.until, frame + 4*60); }
+    else if (hy.phase === 'go') { hy.phase = 'return'; hy.bloom = 1; hy.until = frame + 12*60; }
+    else if (hy.phase === 'flight') { hy.phase = 'return'; hy.bloom = 1; hy.go = 1; hy.until = frame + 12*60; }
+    showCaption('coming back.', 4000, 'now'); note('passage', { leave: true });
   }
   function meet() {
     const pool = (typeof marks !== 'undefined' ? marks : []).filter(x => x && x.note && x.kind !== 'question');
@@ -407,6 +416,7 @@
     tele.innerHTML = `${mode}${route ? ' · ' + route.r.name : ''} · ${g} · ${pl || 'between'}<br>F <b>${W.F.toFixed(4)}</b>  K <b>${W.k.toFixed(4)}</b>  T <b>${hh ? hh + ':' : ''}${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}</b>`;
     document.documentElement.style.setProperty('--neon', `rgb(${nc})`);
     const tl = hy.target ? 'come back' : 'blast off'; if (throughBtn.textContent !== tl) throughBtn.textContent = tl;
+    const showBack = !!hy.target && !hy.leaving; if (backBtn.hidden === showBack) backBtn.hidden = !showBack;
   }
 
   // ---- UI: fullscreen, wake lock, idle fade, panel, captions ----
@@ -444,12 +454,14 @@
   function closePanel() { panel.hidden = true; }
   infoBtn.addEventListener('click', e => { e.stopPropagation(); panel.hidden ? openPanel() : closePanel(); });
   $('close').addEventListener('click', closePanel);
-  const throughBtn = $('through');
-  throughBtn.addEventListener('click', e => { e.stopPropagation(); if (hy.target) passage(0); else { closePanel(); passage(80, null, undefined, undefined, true); } });
+  const throughBtn = $('through'), backBtn = $('back');
+  backBtn.addEventListener('click', e => { e.stopPropagation(); comeBack(); });
+  throughBtn.addEventListener('click', e => { e.stopPropagation(); if (hy.target) { closePanel(); comeBack(); } else { closePanel(); passage(80, null, undefined, undefined, true); } });
   panel.addEventListener('pointerdown', e => e.stopPropagation());
   addEventListener('keydown', e => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
     if (e.key === 'Escape' && !panel.hidden) closePanel();
+    else if (e.key === 'Escape' && hy.target) comeBack();
     else if (e.key === 'i') panel.hidden ? openPanel() : closePanel();
     else if (e.key === 'f' && fsOK) toggleFS();
     else if (e.key === 'p') { poke(); note('poke', { by: 'key' }); }
@@ -760,7 +772,7 @@
     blendGrade();
     pulse *= 0.985;
     if (hy.target && frame >= hy.until) { hy.target = 0; note('passage', { closed: true }); }
-    hy.amt += (hy.target - hy.amt)*(hy.target ? 0.006 : 0.009);
+    hy.amt += (hy.target - hy.amt)*(hy.target ? 0.006 : hy.leaving ? 0.022 : 0.009);
     if (hy.amt < 0.0005 && !hy.target) hy.amt = 0;
     const flying = hy.phase === 'bloom' || hy.phase === 'closed' ? 0.08 : hy.phase === 'go' || hy.phase === 'return' ? 0.08 + 0.92*hy.go*hy.go : 1;
     hy.travel += (dt/1000)*0.16*hy.amt*hy.amt*flying; hy.rot += (dt/1000)*0.035*hy.amt;
@@ -769,7 +781,7 @@
     // sometimes the far light comes forward in the middle of a passage, and someone who was here before is in it
     const hp = hy.target && hy.until > hy.start ? (frame - hy.start)/(hy.until - hy.start) : 0;
     hy.brk += ((hy.breaks ? Math.pow(Math.sin(Math.PI*Math.min(1, hp)), 6) : 0) - hy.brk)*0.02;
-    if (hy.breaks && !hy.met && hp > 0.45 && hy.amt > 0.8) { hy.met = true; meet(); }
+    if (hy.breaks && !hy.leaving && !hy.met && hp > 0.45 && hy.amt > 0.8) { hy.met = true; meet(); }
     hy.dark += ((hy.darkMode && hy.target && (hy.phase === 'go' || hy.phase === 'flight') ? 1 : hy.target ? 0 : hy.dark) - hy.dark)*0.01;
     if (hy.target) {
       const secs = (frame - hy.start)/60;
@@ -786,9 +798,9 @@
         // the way back out is the same flower, from the other side
         if (frame >= hy.until - (GO + 7)*60) { hy.phase = 'return'; hy.bloom = 1; hy.go = 1; note('passage', { returning: true }); }
       } else if (hy.phase === 'return') {
-        hy.go = Math.max(0, hy.go - 1/(GO*60));
+        hy.go = Math.max(0, hy.go - 1/((hy.leaving ? 3.5 : GO)*60));
         if (hy.go <= 0) { hy.unfold += (0 - hy.unfold)*0.012; hy.until = Math.min(hy.until, frame + 90); }
-      } else if (hy.phase === 'closed') { hy.unfold += (0 - hy.unfold)*0.012; }
+      } else if (hy.phase === 'closed') { hy.unfold += (0 - hy.unfold)*(hy.leaving ? 0.02 : 0.012); }
     } else { hy.bloom += (0 - hy.bloom)*0.02; }
     cam.h += 0.0004*Math.sin(T/230 + 0.7);
     const sp = 0.000022*(1 + 0.5*Math.sin(T/300));

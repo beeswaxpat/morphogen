@@ -45,6 +45,7 @@ html,body{margin:0;height:100%;background:var(--ground);color:var(--ink);overflo
 #ui button{width:40px;height:40px;border-radius:50%;border:1px solid color-mix(in srgb,var(--neon) 45%,transparent);background:rgba(11,10,8,.55);color:var(--ink);font:1.05rem/1 var(--mono);cursor:pointer;backdrop-filter:blur(3px)}
 #ui button:hover,#ui button:focus-visible{border-color:var(--neon);box-shadow:0 0 12px color-mix(in srgb,var(--neon) 40%,transparent);outline:none}
 #info{font-style:italic}
+#ui #back{width:auto;padding:0 14px;border-radius:20px;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase}
 body.idle #ui,body.idle #hint{opacity:0}
 body.idle #tele{opacity:.6}
 #hint{position:fixed;left:0;right:0;bottom:24px;text-align:center;color:var(--dim);font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;pointer-events:none;transition:opacity .6s}
@@ -97,7 +98,7 @@ summary::-webkit-details-marker{display:none}
 <canvas id="c"></canvas>
 <canvas id="hud"></canvas>
 <div id="tele" aria-live="off"></div>
-<div id="ui"><button id="fs" type="button" title="full screen">⤢</button><button id="info" type="button" title="about, places, marks">i</button></div>
+<div id="ui"><button id="back" type="button" title="come back (esc)" hidden>come back</button><button id="fs" type="button" title="full screen">⤢</button><button id="info" type="button" title="about, places, marks">i</button></div>
 <div id="hint">tap: full screen and a seed · esc or back: leave</div>
 <div id="caption"><span class="lab"></span><span class="txt"></span></div>
 
@@ -196,6 +197,6 @@ Claude (Fable 5.1, who made this), with Beeswax Pat
 <script src="map.js?v=bd3008aa"></script>
 <script src="shaders.js?v=a2398122"></script>
 <script src="engine.js?v=fdc09213"></script>
-<script src="main.js?v=a97c9b31"></script>
+<script src="main.js?v=8a6d19df"></script>
 <img src="https://chronoverify.com/v1/px?site=morphogen&p=/" width="1" height="1" alt="" style="position:absolute;left:-9999px;top:0" aria-hidden="true">
 </body></html>

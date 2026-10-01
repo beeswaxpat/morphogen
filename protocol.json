@@ -46,7 +46,8 @@
   "key": "h",
   "safety": "no flashing; the light, the bands and the breathing change slower than 1.5 Hz; the pattern streams past as motion",
   "link": "https://beeswaxpat.github.io/morphogen/?passage (or ?passage=dark, ?passage=light)",
-  "auto": "about 1 visit in 3 opens it on its own 10 s after load (always through the flower; never with prefers-reduced-motion, never while the panel is open or someone is tapping); ?auto=0 turns it off, ?auto=1 forces it"
+  "auto": "about 1 visit in 3 opens it on its own 10 s after load (always through the flower; never with prefers-reduced-motion, never while the panel is open or someone is tapping); ?auto=0 turns it off, ?auto=1 forces it",
+  "exit": "a come back button sits top right while a passage is open; Esc does the same; morphogen.passage(0) too; all leave back through the flower"
  },
  "kinds": {
   "mark": {
