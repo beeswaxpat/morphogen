@@ -406,7 +406,7 @@
     const g = gmix < 1 ? gradeA + ' → ' + gradeB : gradeB;
     tele.innerHTML = `${mode}${route ? ' · ' + route.r.name : ''} · ${g} · ${pl || 'between'}<br>F <b>${W.F.toFixed(4)}</b>  K <b>${W.k.toFixed(4)}</b>  T <b>${hh ? hh + ':' : ''}${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}</b>`;
     document.documentElement.style.setProperty('--neon', `rgb(${nc})`);
-    const tl = hy.target ? 'come back' : 'through'; if (throughBtn.textContent !== tl) throughBtn.textContent = tl;
+    const tl = hy.target ? 'come back' : 'blast off'; if (throughBtn.textContent !== tl) throughBtn.textContent = tl;
   }
 
   // ---- UI: fullscreen, wake lock, idle fade, panel, captions ----
